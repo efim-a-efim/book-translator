@@ -1,18 +1,18 @@
 # Project State
 
-**Current Phase:** 1 — Foundation  
-**Status:** Planned  
+**Current Phase:** 2 — Parsers  
+**Status:** Planning  
 **Last Updated:** 2026-05-20
 
 ## Phase Progress
 | Phase | Name                  | Status        |
 |-------|-----------------------|---------------|
-| 1     | Foundation            | Planned       |
-| 2     | Parsers              | Not Started   |
+| 1     | Foundation            | ✓ Complete    |
+| 2     | Parsers              | Planning      |
 | 3     | Translation Engine   | Not Started   |
 | 4     | EPUB Assembler       | Not Started   |
 | 5     | CLI                  | Not Started   |
 | 6     | Polish & Release     | Not Started   |
 
 ## Notes
-*Phase 1 planning complete. Three plans drafted for Foundation phase.*
+*Phase 1 complete. All 3 plans executed (01-01, 01-02, 01-03). Foundation IR, JobStore, and pytest tests ready. Phase 2 planning phase.*

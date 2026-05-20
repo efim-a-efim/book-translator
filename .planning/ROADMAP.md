@@ -6,7 +6,7 @@
 
 | Phase | Name                  | Goal                                         | Status       |
 |-------|-----------------------|----------------------------------------------|--------------|
-| 1     | Foundation            | Core IR, file-system job store, scaffold      | Planned      |
+| 1     | Foundation            | Core IR, file-system job store, scaffold      | ✓ Complete   |
 | 2     | Parsers              | Parse EPUB, TXT, Markdown into BookDocument   | Not Started  |
 | 3     | Translation Engine   | OpenAI-compatible API client, chunking, retry | Not Started  |
 | 4     | EPUB Assembler       | Bilingual EPUB with paragraph pairs           | Not Started  |
