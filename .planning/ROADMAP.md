@@ -6,7 +6,7 @@
 
 | Phase | Name                  | Goal                                         | Status       |
 |-------|-----------------------|----------------------------------------------|--------------|
-| 1     | Foundation            | Core IR, file-system job store, scaffold      | Not Started  |
+| 1     | Foundation            | Core IR, file-system job store, scaffold      | Planned      |
 | 2     | Parsers              | Parse EPUB, TXT, Markdown into BookDocument   | Not Started  |
 | 3     | Translation Engine   | OpenAI-compatible API client, chunking, retry | Not Started  |
 | 4     | EPUB Assembler       | Bilingual EPUB with paragraph pairs           | Not Started  |
@@ -27,12 +27,17 @@
 - No external AI calls in this phase
 
 ### Plans
-- [ ] 01-01-PLAN.md — Project scaffold (pyproject.toml, src/ layout, pip install -e .)
-- [ ] 01-02-PLAN.md — IR data models (Paragraph, Chapter, BookDocument, JobMeta)
-- [ ] 01-03-PLAN.md — JobStore implementation + pytest test suite
+
+| Plan | Wave | Objective                                      |
+|------|------|------------------------------------------------|
+| 01-01 | 1 | Project scaffold: pyproject.toml, src/ layout, install config |
+| 01-02 | 1 | IR models: Paragraph, Chapter, BookDocument, JobMeta |
+| 01-03 | 2 | JobStore + tests (depends on 01-01, 01-02) |
+
+Wave dependency notes: Wave 2 *(blocked on Wave 1 completion)*.
 
 ### Dependencies
-- None
+- None (Wave 1 has no dependencies; Wave 2 blocked on Wave 1)
 
 ### Success Criteria
 - `BookDocument` can be serialized/deserialized to disk
