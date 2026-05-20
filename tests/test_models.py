@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import dataclasses
+
 from book_translator.models.document import BookDocument, Chapter, Paragraph
+from book_translator.models.job import JobMeta
 
 
 def test_paragraph_defaults():
@@ -53,3 +56,16 @@ def test_book_document_empty_translation_vs_none():
 def test_chapter_empty_paragraphs():
     ch = Chapter(id="ch1")
     assert ch.paragraphs == []
+
+
+def test_paragraph_kind_variants():
+    for kind in ("heading", "caption", "footnote"):
+        p = Paragraph(id="p1", text="x", raw_html="x", kind=kind)  # type: ignore[arg-type]
+        assert p.kind == kind
+
+
+def test_jobmeta_default_params():
+    m = JobMeta(model="openai/gpt-4o")
+    assert m.params == {}
+    fields = {f.name for f in dataclasses.fields(m)}
+    assert fields == {"model", "params"}
