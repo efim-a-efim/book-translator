@@ -56,6 +56,16 @@ Wave dependency notes: Wave 2 *(blocked on Wave 1 completion)*.
 - Markdown parser: paragraph splitting, strip formatting markers
 - ZIP path traversal protection for EPUB
 
+### Plans
+
+| Plan  | Wave | Objective                                                                        |
+|-------|------|----------------------------------------------------------------------------------|
+| 02-01 | 1    | Foundation: extend `kind` Literal, add `markdown` dep, create `parsers/__init__.py` |
+| 02-02 | 2    | EPUB parser: DRM detection, ZIP traversal guard, recursive block extractor       |
+| 02-03 | 3    | TXT + Markdown parsers + full test suite for all three parsers                   |
+
+Wave dependency notes: Wave 2 blocked on Wave 1 (`ParseError`, extended `kind`). Wave 3 blocked on Wave 2 (`_extract_blocks` imported by `md.py`).
+
 ### Dependencies
 - Phase 1: `BookDocument` and JobStore must exist
 
