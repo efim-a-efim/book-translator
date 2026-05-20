@@ -12,7 +12,7 @@ class Paragraph(BaseModel):
     text: str
     raw_html: str
     translation: str | None = None
-    kind: Literal["paragraph", "heading", "caption", "footnote"] = "paragraph"
+    kind: Literal["paragraph", "heading", "caption", "footnote", "image", "table"] = "paragraph"
 
 
 class Chapter(BaseModel):

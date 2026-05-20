@@ -59,7 +59,7 @@ def test_chapter_empty_paragraphs():
 
 
 def test_paragraph_kind_variants():
-    for kind in ("heading", "caption", "footnote"):
+    for kind in ("heading", "caption", "footnote", "image", "table"):
         p = Paragraph(id="p1", text="x", raw_html="x", kind=kind)  # type: ignore[arg-type]
         assert p.kind == kind
 
