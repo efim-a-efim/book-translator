@@ -26,6 +26,11 @@
 - Project scaffold: `pyproject.toml`, package structure, dev tooling (ruff, pytest)
 - No external AI calls in this phase
 
+### Plans
+- [ ] 01-01-PLAN.md — Project scaffold (pyproject.toml, src/ layout, pip install -e .)
+- [ ] 01-02-PLAN.md — IR data models (Paragraph, Chapter, BookDocument, JobMeta)
+- [ ] 01-03-PLAN.md — JobStore implementation + pytest test suite
+
 ### Dependencies
 - None
 
