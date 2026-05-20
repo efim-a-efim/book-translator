@@ -88,6 +88,15 @@ Wave dependency notes: Wave 2 blocked on Wave 1 (`ParseError`, extended `kind`).
 - Concurrency via `asyncio.Semaphore`
 - Translate into `Paragraph.translation` slots
 
+### Plans
+
+**Plans:** 3 plans in 3 waves
+
+Plans:
+- [ ] 03-01-PLAN.md — Package scaffold, context window chunker, prompt builder (pure components, no async)
+- [ ] 03-02-PLAN.md — AsyncOpenAI client factory and retry layer (translate_paragraph + tenacity)
+- [ ] 03-03-PLAN.md — Full translation engine with job directory I/O (translate() + integration tests)
+
 ### Dependencies
 - Phase 1: `BookDocument` and Paragraph model must exist
 - No Phase 2 parsers are required for API client (abstract input)
