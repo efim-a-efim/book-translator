@@ -8,7 +8,7 @@
 |-------|-----------------------|----------------------------------------------|--------------|
 | 1     | Foundation            | Core IR, file-system job store, scaffold      | ✓ Complete   |
 | 2     | Parsers              | Parse EPUB, TXT, Markdown into BookDocument   | ✓ Complete   |
-| 3     | Translation Engine   | OpenAI-compatible API client, chunking, retry | Not Started  |
+| 3     | Translation Engine   | OpenAI-compatible API client, chunking, retry | ✓ Complete   |
 | 4     | EPUB Assembler       | Bilingual EPUB with paragraph pairs           | Not Started  |
 | 5     | CLI                  | Typer-based CLI, end-to-end integration       | Not Started  |
 | 6     | Polish & Release     | README, metadata, tests, CI                   | Not Started  |
@@ -93,9 +93,9 @@ Wave dependency notes: Wave 2 blocked on Wave 1 (`ParseError`, extended `kind`).
 **Plans:** 3 plans in 3 waves
 
 Plans:
-- [ ] 03-01-PLAN.md — Package scaffold, context window chunker, prompt builder (pure components, no async)
-- [ ] 03-02-PLAN.md — AsyncOpenAI client factory and retry layer (translate_paragraph + tenacity)
-- [ ] 03-03-PLAN.md — Full translation engine with job directory I/O (translate() + integration tests)
+- [x] 03-01-PLAN.md — Package scaffold, context window chunker, prompt builder (pure components, no async)
+- [x] 03-02-PLAN.md — AsyncOpenAI client factory and retry layer (translate_paragraph + tenacity)
+- [x] 03-03-PLAN.md — Full translation engine with job directory I/O (translate() + integration tests)
 
 ### Dependencies
 - Phase 1: `BookDocument` and Paragraph model must exist
@@ -118,6 +118,15 @@ Plans:
 - Chapter size splitting: split oversized chapters to stay under ~300KB e-reader limit
 - Duplicate anchor ID handling (prefix original vs translation anchors)
 - Write output to `dst/<book_name>.<target_lang>.epub` in run directory
+
+### Plans
+
+**Plans:** 3 plans in 3 waves
+
+Plans:
+- [ ] 04-01-PLAN.md — assembler/ package scaffold + html_gen.py (pair HTML generation, ID dedup, XHTML wrapping)
+- [ ] 04-02-PLAN.md — splitter.py (chapter size splitting) + builder.py (EpubBuilder orchestration)
+- [ ] 04-03-PLAN.md — assemble() public function + integration tests
 
 ### Dependencies
 - Phase 2: Parsers produce valid `BookDocument`
