@@ -36,9 +36,9 @@ class EpubBuilder:
 
             chapter_items: list[epub.EpubHtml] = []
             for body_html, filename in parts:
-                xhtml_content = wrap_chapter_xhtml([body_html], chapter.title or "")
+                xhtml_content = wrap_chapter_xhtml([body_html], chapter.title or "", lang=target_lang)
                 ch_item = epub.EpubHtml(title=chapter.title or "", file_name=filename, lang=target_lang)
-                ch_item.content = xhtml_content
+                ch_item.content = xhtml_content.encode("utf-8")
                 book.add_item(ch_item)
                 chapter_items.append(ch_item)
 

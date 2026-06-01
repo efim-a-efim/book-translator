@@ -9,7 +9,7 @@
 | 1     | Foundation            | Core IR, file-system job store, scaffold      | ✓ Complete   |
 | 2     | Parsers              | Parse EPUB, TXT, Markdown into BookDocument   | ✓ Complete   |
 | 3     | Translation Engine   | OpenAI-compatible API client, chunking, retry | ✓ Complete   |
-| 4     | EPUB Assembler       | Bilingual EPUB with paragraph pairs           | Not Started  |
+| 4     | EPUB Assembler       | Bilingual EPUB with paragraph pairs           | ✓ Complete   |
 | 5     | CLI                  | Typer-based CLI, end-to-end integration       | Not Started  |
 | 6     | Polish & Release     | README, metadata, tests, CI                   | Not Started  |
 
@@ -124,9 +124,9 @@ Plans:
 **Plans:** 3 plans in 3 waves
 
 Plans:
-- [ ] 04-01-PLAN.md — assembler/ package scaffold + html_gen.py (pair HTML generation, ID dedup, XHTML wrapping)
-- [ ] 04-02-PLAN.md — splitter.py (chapter size splitting) + builder.py (EpubBuilder orchestration)
-- [ ] 04-03-PLAN.md — assemble() public function + integration tests
+- [x] 04-01-PLAN.md — assembler/ package scaffold + html_gen.py (pair HTML generation, ID dedup, XHTML wrapping)
+- [x] 04-02-PLAN.md — splitter.py (chapter size splitting) + builder.py (EpubBuilder orchestration)
+- [x] 04-03-PLAN.md — assemble() public function + integration tests
 
 ### Dependencies
 - Phase 2: Parsers produce valid `BookDocument`
