@@ -1,8 +1,8 @@
 # Project State
 
 **Current Phase:** 5 — CLI  
-**Status:** Phase 4 Complete — Ready to Plan Phase 5  
-**Last Updated:** 2026-06-01
+**Status:** Phase 5 Discussed — Ready to Plan Phase 5  
+**Last Updated:** 2026-06-02
 
 ## Phase Progress
 | Phase | Name                  | Status        |
@@ -11,17 +11,21 @@
 | 2     | Parsers              | ✓ Complete    |
 | 3     | Translation Engine   | ✓ Complete    |
 | 4     | EPUB Assembler       | ✓ Complete    |
-| 5     | CLI                  | Not Started   |
+| 5     | CLI                  | Discussed     |
 | 6     | Polish & Release     | Not Started   |
 
 ## Notes
-Phase 4 complete. All 3 waves executed:
-- Wave 04-01: assembler/ package scaffold + html_gen.py (pair HTML generation, ID dedup, XHTML wrapping)
-- Wave 04-02: splitter.py (chapter size splitting) + builder.py (EpubBuilder orchestration)
-- Wave 04-03: assemble() public function + integration tests
+Phase 5 discussion complete. Key scope decisions locked (D-01..D-21):
+- `translate` command only (no step subcommands)
+- Auto-delete successful runs after EPUB placed; retain failed runs
+- `list` command for preserved run management
+- `--cleanup` to remove terminal runs (failed+completed)
+- `--output PATH` for final EPUB destination
+- Exit codes 0/1/2; plain text output; no Rich decorative output
+- API key: `--api-key` → `BOOK_TRANSLATOR_API_KEY` → `OPENAI_API_KEY`
 
-Focused assembler tests: 26 passing. Full suite blocked at collection by pre-existing `ModuleNotFoundError: No module named 'markdown'` in `tests/test_parsers.py` — not a Phase 4 regression.
+Discussion artifacts: `.planning/phases/05-cli/05-CONTEXT.md`, `.planning/phases/05-cli/05-DISCUSSION-LOG.md`
 
 ## Last Session
-- Stopped at: Phase 4 execution complete, 26 assembler tests passing
-- Resume file: `.planning/phases/05-cli/` or Phase 5 planning
+- Stopped at: Phase 5 discussion complete; 21 decisions locked; ready for planning
+- Resume file: `.planning/phases/05-cli/05-CONTEXT.md`
