@@ -2,12 +2,21 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import uuid
 from pathlib import Path
 
 from book_translator.models.job import JobMeta
 
 RUNS_BASE: Path = Path.home() / ".local" / "share" / "book-translator" / "runs"
+
+# Run state constants (D-21)
+STATE_RUNNING = "running"
+STATE_FAILED = "failed"
+STATE_COMPLETED = "completed"
+STATE_UNKNOWN = "unknown"
+
+TERMINAL_STATES = {STATE_FAILED, STATE_COMPLETED}
 
 
 class JobStore:
@@ -59,3 +68,18 @@ class JobStore:
     def dst_dir(self, run_id: str) -> Path:
         """Return the dst/ subdirectory for a run."""
         return self.run_dir(run_id) / "dst"
+
+    def delete_run(self, run_id: str) -> None:
+        """Remove a run directory and all its contents."""
+        shutil.rmtree(self.run_dir(run_id))
+
+    def list_run_metas(self) -> list[tuple[str, JobMeta]]:
+        """Return (run_id, JobMeta) pairs for all existing runs, sorted by run_id."""
+        result = []
+        for run_id in self.list_runs():
+            try:
+                meta = self.read_meta(run_id)
+            except Exception:
+                meta = JobMeta(model="unknown", params={"state": "unknown"})
+            result.append((run_id, meta))
+        return result
