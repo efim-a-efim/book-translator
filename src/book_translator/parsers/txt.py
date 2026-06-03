@@ -4,7 +4,6 @@ import re
 from pathlib import Path
 
 from book_translator.models.document import BookDocument, Chapter, Paragraph
-from book_translator.parsers import ParseError
 
 _RULER_RE = re.compile(r"^\s*[-*_]{3,}\s*$", re.MULTILINE)
 _BLANK_RE = re.compile(r"\n{2,}")

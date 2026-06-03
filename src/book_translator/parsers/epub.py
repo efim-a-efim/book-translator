@@ -9,9 +9,7 @@ from ebooklib import epub
 from book_translator.models.document import BookDocument, Chapter, Paragraph
 from book_translator.parsers import ParseError
 
-LEAF_BLOCK_TAGS: frozenset[str] = frozenset(
-    {"p", "h1", "h2", "h3", "h4", "h5", "h6", "li", "blockquote", "img", "table"}
-)
+LEAF_BLOCK_TAGS: frozenset[str] = frozenset({"p", "h1", "h2", "h3", "h4", "h5", "h6", "li", "blockquote", "img", "table"})
 
 TAG_TO_KIND: dict[str, str] = {
     "h1": "heading",
@@ -57,10 +55,7 @@ def _walk(node, chapter_id: str, acc: list[Paragraph], counter: list[int]) -> No
             )
             counter[0] += 1
         elif child.name == "div":
-            has_block_children = any(
-                hasattr(c, "name") and c.name in LEAF_BLOCK_TAGS | {"div"}
-                for c in child.children
-            )
+            has_block_children = any(hasattr(c, "name") and c.name in LEAF_BLOCK_TAGS | {"div"} for c in child.children)
             if has_block_children:
                 _walk(child, chapter_id, acc, counter)
             else:

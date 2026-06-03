@@ -1,6 +1,5 @@
 """Tests for book_translator.assembler.html_gen."""
 
-import pytest
 from bs4 import BeautifulSoup
 
 from book_translator.assembler.html_gen import (
@@ -11,10 +10,10 @@ from book_translator.assembler.html_gen import (
 )
 from book_translator.models.document import Paragraph
 
-
 # ---------------------------------------------------------------------------
 # _inject_class
 # ---------------------------------------------------------------------------
+
 
 def test_inject_class_adds_class():
     result = _inject_class("<p>Hello</p>", "bt-orig")
@@ -44,6 +43,7 @@ def test_inject_class_no_duplicate():
 # _prefix_ids
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_ids_element_id():
     result = _prefix_ids('<p id="sec1">Text</p>')
     soup = BeautifulSoup(result, "lxml")
@@ -67,6 +67,7 @@ def test_prefix_ids_no_id():
 # ---------------------------------------------------------------------------
 # build_pair_html
 # ---------------------------------------------------------------------------
+
 
 def test_build_pair_html_paragraph():
     para = Paragraph(
@@ -123,6 +124,7 @@ def test_build_pair_html_no_translation():
 # wrap_chapter_xhtml
 # ---------------------------------------------------------------------------
 
+
 def test_wrap_chapter_xhtml_structure():
     pairs = ["<p>one</p>", "<p>two</p>"]
     result = wrap_chapter_xhtml(pairs, title="Chapter 1", lang="ru")
@@ -135,7 +137,7 @@ def test_wrap_chapter_xhtml_structure():
 
 # --- Splitter tests ---
 
-from book_translator.assembler.splitter import split_chapter_parts
+from book_translator.assembler.splitter import split_chapter_parts  # noqa: E402
 
 
 def test_split_single_part():
@@ -170,8 +172,9 @@ def test_split_oversized_single_pair():
 
 # --- Builder tests ---
 
-from book_translator.assembler.builder import EpubBuilder
-from book_translator.models.document import BookDocument, Chapter, Paragraph as Para
+from book_translator.assembler.builder import EpubBuilder  # noqa: E402
+from book_translator.models.document import BookDocument, Chapter  # noqa: E402
+from book_translator.models.document import Paragraph as Para  # noqa: E402
 
 
 def test_builder_sets_metadata():
@@ -187,12 +190,16 @@ def test_builder_spine_has_chapter_items():
         author="A",
         source_lang="en",
         chapters=[
-            Chapter(id="c1", title="Ch1", paragraphs=[
-                Para(id="p1", text="Hello", raw_html="<p>Hello</p>", translation="Привет", kind="paragraph")
-            ]),
-            Chapter(id="c2", title="Ch2", paragraphs=[
-                Para(id="p2", text="World", raw_html="<p>World</p>", translation="Мир", kind="paragraph")
-            ]),
+            Chapter(
+                id="c1",
+                title="Ch1",
+                paragraphs=[Para(id="p1", text="Hello", raw_html="<p>Hello</p>", translation="Привет", kind="paragraph")],
+            ),
+            Chapter(
+                id="c2",
+                title="Ch2",
+                paragraphs=[Para(id="p2", text="World", raw_html="<p>World</p>", translation="Мир", kind="paragraph")],
+            ),
         ],
     )
     book = EpubBuilder().build(doc, "ru")
@@ -206,13 +213,16 @@ def test_builder_chapter_filenames():
         author="A",
         source_lang="en",
         chapters=[
-            Chapter(id="c1", title="Ch1", paragraphs=[
-                Para(id="p1", text="Hello", raw_html="<p>Hello</p>", translation="Привет", kind="paragraph")
-            ]),
+            Chapter(
+                id="c1",
+                title="Ch1",
+                paragraphs=[Para(id="p1", text="Hello", raw_html="<p>Hello</p>", translation="Привет", kind="paragraph")],
+            ),
         ],
     )
     book = EpubBuilder().build(doc, "ru")
     from ebooklib import epub as _epub
+
     items = [item for item in book.items if isinstance(item, _epub.EpubHtml)]
     filenames = [item.file_name for item in items]
     assert "chapter-01-pt1.xhtml" in filenames

@@ -12,7 +12,6 @@ from book_translator.parsers.epub import EpubParser
 from book_translator.parsers.md import MarkdownParser
 from book_translator.parsers.txt import TxtParser
 
-
 # ---------------------------------------------------------------------------
 # EPUB helpers
 # ---------------------------------------------------------------------------
@@ -235,9 +234,7 @@ def test_txt_encoding_fallback(tmp_path: Path) -> None:
 
 def test_md_h1_splits_chapters(tmp_path: Path) -> None:
     p = tmp_path / "book.md"
-    p.write_text(
-        "# Chapter One\n\nParagraph.\n\n# Chapter Two\n\nBody.", encoding="utf-8"
-    )
+    p.write_text("# Chapter One\n\nParagraph.\n\n# Chapter Two\n\nBody.", encoding="utf-8")
     doc = MarkdownParser().parse(p)
     assert len(doc.chapters) == 2
     assert doc.chapters[0].title == "Chapter One"
@@ -299,11 +296,13 @@ def test_li_kind_is_paragraph(tmp_path: Path) -> None:
 
 def test_epub_multi_chapter(tmp_path: Path) -> None:
     """D-01: EPUB with multiple spine items produces multiple Chapter objects."""
-    data = _make_epub([
-        ("ch1", "Chapter 1", "<p>First chapter text.</p>"),
-        ("ch2", "Chapter 2", "<p>Second chapter text.</p>"),
-        ("ch3", "Chapter 3", "<p>Third chapter text.</p>"),
-    ])
+    data = _make_epub(
+        [
+            ("ch1", "Chapter 1", "<p>First chapter text.</p>"),
+            ("ch2", "Chapter 2", "<p>Second chapter text.</p>"),
+            ("ch3", "Chapter 3", "<p>Third chapter text.</p>"),
+        ]
+    )
     p = tmp_path / "book.epub"
     p.write_bytes(data)
     doc = EpubParser().parse(p)
@@ -316,8 +315,6 @@ def test_epub_multi_chapter(tmp_path: Path) -> None:
 
 def test_parser_protocol_conformance() -> None:
     """D-13: All three parsers are structurally compatible with the Parser Protocol."""
-    from book_translator.parsers import Parser
-    from typing import runtime_checkable, Protocol
     import inspect
 
     for parser_cls in (EpubParser, TxtParser, MarkdownParser):
@@ -349,4 +346,3 @@ def test_raw_html_preserves_attributes(tmp_path: Path) -> None:
     assert para.text == "Привет мир"
     assert 'class="indent"' in para.raw_html
     assert "Привет мир" in para.raw_html
-

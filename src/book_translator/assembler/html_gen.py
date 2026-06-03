@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from typing import Sequence
+from collections.abc import Sequence
 
 from bs4 import BeautifulSoup, Tag
 
@@ -92,12 +92,7 @@ def build_pair_html(para: Paragraph) -> str:
 
     trans_html = f'<{tag_name} class="bt-trans">{trans_text}</{tag_name}>'
 
-    return (
-        '<div class="bt-pair">\n'
-        f"{orig_html}\n"
-        f"{trans_html}\n"
-        "</div>"
-    )
+    return f'<div class="bt-pair">\n{orig_html}\n{trans_html}\n</div>'
 
 
 def wrap_chapter_xhtml(

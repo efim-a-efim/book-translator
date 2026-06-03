@@ -5,24 +5,22 @@ from pathlib import Path
 
 from ebooklib import epub
 
-from book_translator.models.document import BookDocument
 from book_translator.assembler.builder import EpubBuilder
+from book_translator.models.document import BookDocument
 
 __all__ = ["assemble"]
 
 
 def assemble(job_dir: Path, target_lang: str) -> Path:
     """Build a bilingual EPUB from a translated BookDocument JSON in job_dir/dst/.
-    
+
     Expects exactly one *.json file in job_dir/dst/. Raises ValueError otherwise.
     Returns the Path to the written EPUB file.
     """
     dst_dir = job_dir / "dst"
     json_files = list(dst_dir.glob("*.json"))
     if len(json_files) != 1:
-        raise ValueError(
-            f"Expected exactly 1 JSON in {dst_dir}, found {len(json_files)}: {json_files}"
-        )
+        raise ValueError(f"Expected exactly 1 JSON in {dst_dir}, found {len(json_files)}: {json_files}")
     json_path = json_files[0]
 
     doc = BookDocument.from_json(json_path.read_text(encoding="utf-8"))

@@ -6,7 +6,6 @@ import markdown
 from bs4 import BeautifulSoup
 
 from book_translator.models.document import BookDocument, Chapter
-from book_translator.parsers import ParseError
 from book_translator.parsers.epub import _extract_blocks
 
 

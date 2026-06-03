@@ -5,8 +5,21 @@ build-backend = "hatchling.build"
 [project]
 name = "book-translator"
 version = "0.1.0"
-description = "AI-powered bilingual book translator"
+description = "AI-powered bilingual book translator. Converts EPUB, TXT, and Markdown into parallel-reading EPUBs."
 readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "book-translator contributors" }]
+keywords = ["epub", "translation", "openai", "bilingual", "ebook", "nlp"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Text Processing :: Linguistic",
+    "Topic :: Utilities",
+]
 requires-python = ">=3.11"
 dependencies = [
     "pydantic>=2.0",
@@ -20,6 +33,11 @@ dependencies = [
     "tenacity>=8.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/aefimov/book-translator"
+Repository = "https://github.com/aefimov/book-translator"
+Issues = "https://github.com/aefimov/book-translator/issues"
+
 [project.scripts]
 book-translator = "book_translator.cli:app"
 
@@ -30,7 +48,7 @@ dev = ["ruff", "pytest", "pytest-asyncio"]
 packages = ["src/book_translator"]
 
 [tool.ruff]
-line-length = 100
+line-length = 130
 target-version = "py311"
 
 [tool.ruff.lint]

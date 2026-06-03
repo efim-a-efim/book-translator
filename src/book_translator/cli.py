@@ -4,9 +4,8 @@ import asyncio
 import logging
 import os
 import shutil
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 
 import typer
 
@@ -44,7 +43,7 @@ def _set_state(store: JobStore, run_id: str, state: str) -> None:
     try:
         meta = store.read_meta(run_id)
         meta.params["state"] = state
-        meta.params["finished_at"] = datetime.now(timezone.utc).isoformat()
+        meta.params["finished_at"] = datetime.now(UTC).isoformat()
         store.update_meta(run_id, meta)
     except Exception as e:
         logging.getLogger(__name__).warning("could not persist run state for %s: %s", run_id, e)
@@ -61,16 +60,19 @@ def _copy_or_move(src: Path, dst: Path) -> None:
         src.unlink(missing_ok=True)
 
 
-def _parse_file(input_path: Path) -> "object":
+def _parse_file(input_path: Path) -> object:
     suffix = input_path.suffix.lower()
     if suffix == ".epub":
         from book_translator.parsers.epub import EpubParser
+
         return EpubParser().parse(input_path)
     elif suffix == ".txt":
         from book_translator.parsers.txt import TxtParser
+
         return TxtParser().parse(input_path)
     elif suffix in (".md", ".markdown"):
         from book_translator.parsers.md import MarkdownParser
+
         return MarkdownParser().parse(input_path)
     raise ParseError(f"Unsupported suffix: {suffix}")
 
@@ -81,9 +83,9 @@ def translate_cmd(
     source_lang: str = typer.Option(..., "--source-lang", "-s", help="Source language code (e.g. en)"),
     target_lang: str = typer.Option(..., "--target-lang", "-t", help="Target language code (e.g. ru)"),
     model: str = typer.Option("gpt-4o-mini", "--model", "-m", help="OpenAI model name"),
-    api_key: Optional[str] = typer.Option(None, "--api-key", help="OpenAI API key", envvar="BOOK_TRANSLATOR_API_KEY"),
-    base_url: Optional[str] = typer.Option(None, "--base-url", help="Custom OpenAI base URL", envvar="BOOK_TRANSLATOR_BASE_URL"),
-    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output EPUB path (default: cwd/<stem>.<target_lang>.epub)"),
+    api_key: str | None = typer.Option(None, "--api-key", help="OpenAI API key", envvar="BOOK_TRANSLATOR_API_KEY"),
+    base_url: str | None = typer.Option(None, "--base-url", help="Custom OpenAI base URL", envvar="BOOK_TRANSLATOR_BASE_URL"),
+    output: Path | None = typer.Option(None, "--output", "-o", help="Output EPUB path (default: cwd/<stem>.<target_lang>.epub)"),
     context_window: int = typer.Option(3, "--context-window", help="Translation context window size"),
     concurrency: int = typer.Option(5, "--concurrency", help="Concurrent translation requests"),
     max_retries: int = typer.Option(5, "--max-retries", help="Max retries per paragraph"),
@@ -100,8 +102,7 @@ def translate_cmd(
     suffix = input_file.suffix.lower()
     if suffix not in SUPPORTED_SUFFIXES:
         typer.echo(
-            f"Error: unsupported file type '{suffix}'. "
-            f"Supported: {', '.join(sorted(SUPPORTED_SUFFIXES))}",
+            f"Error: unsupported file type '{suffix}'. Supported: {', '.join(sorted(SUPPORTED_SUFFIXES))}",
             err=True,
         )
         raise typer.Exit(code=2)
@@ -134,7 +135,7 @@ def translate_cmd(
             "max_retries": max_retries,
             "input_filename": input_file.name,
             "input_path": str(input_file.resolve()),
-            "started_at": datetime.now(timezone.utc).isoformat(),
+            "started_at": datetime.now(UTC).isoformat(),
         },
     )
     run_id = store.create_run(meta)
@@ -242,10 +243,7 @@ def cleanup_cmd(
     """Remove preserved terminal runs (failed + completed). Skips running and unknown."""
     store = JobStore()
     runs = store.list_run_metas()
-    to_delete = [
-        (run_id, meta) for run_id, meta in runs
-        if meta.params.get("state", STATE_UNKNOWN) in TERMINAL_STATES
-    ]
+    to_delete = [(run_id, meta) for run_id, meta in runs if meta.params.get("state", STATE_UNKNOWN) in TERMINAL_STATES]
     if not to_delete:
         typer.echo("Nothing to clean up.")
         return

@@ -5,9 +5,9 @@ import uuid
 
 from ebooklib import epub
 
-from book_translator.models.document import BookDocument
 from book_translator.assembler.html_gen import build_pair_html, wrap_chapter_xhtml
 from book_translator.assembler.splitter import split_chapter_parts
+from book_translator.models.document import BookDocument
 
 
 class EpubBuilder:
@@ -53,17 +53,19 @@ class EpubBuilder:
                     )
                 )
             else:
-                toc_entries.append((
-                    epub.Section(chapter.title or ""),
-                    [
-                        epub.Link(
-                            href=item.file_name,
-                            title=f"{chapter.title or ''} (Part {k})",
-                            uid=item.file_name,
-                        )
-                        for k, item in enumerate(chapter_items, 1)
-                    ],
-                ))
+                toc_entries.append(
+                    (
+                        epub.Section(chapter.title or ""),
+                        [
+                            epub.Link(
+                                href=item.file_name,
+                                title=f"{chapter.title or ''} (Part {k})",
+                                uid=item.file_name,
+                            )
+                            for k, item in enumerate(chapter_items, 1)
+                        ],
+                    )
+                )
 
         book.spine = ["nav"] + all_chapter_items
         book.toc = tuple(toc_entries)

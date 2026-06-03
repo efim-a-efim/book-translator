@@ -3,12 +3,12 @@ from __future__ import annotations
 import zipfile
 from pathlib import Path
 
+import ebooklib
 import pytest
 from ebooklib import epub
-import ebooklib
 
-from book_translator.models.document import BookDocument, Chapter, Paragraph
 from book_translator.assembler import assemble
+from book_translator.models.document import BookDocument, Chapter, Paragraph
 
 
 @pytest.fixture
