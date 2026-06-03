@@ -1,7 +1,7 @@
 # Project State
 
-**Current Phase:** 6 — Polish & Release  
-**Status:** Phase 6 Complete  
+**Current Phase:** — (v1 closed)  
+**Status:** v1 milestone closed (tech_debt accepted) — 2026-06-03  
 **Last Updated:** 2026-06-03
 
 ## Phase Progress
@@ -29,3 +29,9 @@ Discussion artifacts: `.planning/phases/05-cli/05-CONTEXT.md`, `.planning/phases
 ## Last Session
 - Stopped at: Phase 5 discussion complete; 21 decisions locked; ready for planning
 - Resume file: `.planning/phases/05-cli/05-CONTEXT.md`
+
+## Milestone Closure
+- v1 closed: 2026-06-03
+- Final status: tech_debt (accepted)
+- All 6 phases complete, 21/21 requirements satisfied
+- Next milestone: TBD. v1 artifacts archived to `.planning/milestones/v1/`
