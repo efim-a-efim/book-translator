@@ -1,8 +1,8 @@
 # Project State
 
-**Current Phase:** 5 — CLI  
-**Status:** Phase 5 Discussed — Ready to Plan Phase 5  
-**Last Updated:** 2026-06-02
+**Current Phase:** 6 — Polish & Release  
+**Status:** Phase 5 Complete — Ready to Discuss Phase 6  
+**Last Updated:** 2026-06-03
 
 ## Phase Progress
 | Phase | Name                  | Status        |
@@ -11,7 +11,7 @@
 | 2     | Parsers              | ✓ Complete    |
 | 3     | Translation Engine   | ✓ Complete    |
 | 4     | EPUB Assembler       | ✓ Complete    |
-| 5     | CLI                  | Discussed     |
+| 5     | CLI                  | ✓ Complete    |
 | 6     | Polish & Release     | Not Started   |
 
 ## Notes

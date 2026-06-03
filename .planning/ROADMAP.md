@@ -10,7 +10,7 @@
 | 2     | Parsers              | Parse EPUB, TXT, Markdown into BookDocument   | ✓ Complete   |
 | 3     | Translation Engine   | OpenAI-compatible API client, chunking, retry | ✓ Complete   |
 | 4     | EPUB Assembler       | Bilingual EPUB with paragraph pairs           | ✓ Complete   |
-| 5     | CLI                  | Typer-based CLI, end-to-end integration       | Not Started  |
+| 5     | CLI                  | Typer-based CLI, end-to-end integration       | ✓ Complete   |
 | 6     | Polish & Release     | README, metadata, tests, CI                   | Not Started  |
 
 ---
