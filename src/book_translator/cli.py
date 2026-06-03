@@ -46,8 +46,8 @@ def _set_state(store: JobStore, run_id: str, state: str) -> None:
         meta.params["state"] = state
         meta.params["finished_at"] = datetime.now(timezone.utc).isoformat()
         store.update_meta(run_id, meta)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.getLogger(__name__).warning("could not persist run state for %s: %s", run_id, e)
 
 
 def _copy_or_move(src: Path, dst: Path) -> None:
@@ -55,7 +55,9 @@ def _copy_or_move(src: Path, dst: Path) -> None:
     try:
         os.replace(src, dst)
     except OSError:
-        shutil.copy2(src, dst)
+        tmp_dst = dst.with_suffix(dst.suffix + ".tmp")
+        shutil.copy2(src, tmp_dst)
+        os.replace(tmp_dst, dst)
         src.unlink(missing_ok=True)
 
 
