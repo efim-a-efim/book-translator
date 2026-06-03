@@ -1,7 +1,7 @@
 # Project State
 
 **Current Phase:** 6 — Polish & Release  
-**Status:** Phase 5 Complete — Ready to Discuss Phase 6  
+**Status:** Phase 6 Complete  
 **Last Updated:** 2026-06-03
 
 ## Phase Progress
@@ -12,7 +12,7 @@
 | 3     | Translation Engine   | ✓ Complete    |
 | 4     | EPUB Assembler       | ✓ Complete    |
 | 5     | CLI                  | ✓ Complete    |
-| 6     | Polish & Release     | Not Started   |
+| 6     | Polish & Release     | ✓ Complete    |
 
 ## Notes
 Phase 5 discussion complete. Key scope decisions locked (D-01..D-21):
