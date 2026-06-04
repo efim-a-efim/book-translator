@@ -62,10 +62,10 @@ All exit 0:
 | D-05: concise success output | ✓ |
 | D-06: --verbose shows step logs | ✓ |
 | D-08: plain text only, no Rich panels | ✓ |
-| D-09: api key chain flag→BOOK_TRANSLATOR_API_KEY→OPENAI_API_KEY | ✓ tested |
+| D-09: api key chain flag→OPENAI_API_KEY→OPENAI_API_KEY | ✓ tested |
 | D-10: empty string on no key, hint on failure | ✓ |
 | D-11: no secrets in meta.json | ✓ tested |
-| D-12: base URL chain flag→BOOK_TRANSLATOR_BASE_URL→None | ✓ tested |
+| D-12: base URL chain flag→OPENAI_BASE_URL→None | ✓ tested |
 | D-13: exit codes 0/1/2 | ✓ tested |
 | D-14: failed run retained, run_id+path printed | ✓ tested |
 | D-17: --output flag, default cwd | ✓ tested |

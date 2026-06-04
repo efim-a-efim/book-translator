@@ -30,13 +30,13 @@ app = typer.Typer(add_completion=False, help="AI-powered bilingual book translat
 def _resolve_api_key(flag_value: str | None) -> str:
     if flag_value:
         return flag_value
-    return os.environ.get("BOOK_TRANSLATOR_API_KEY") or os.environ.get("OPENAI_API_KEY") or ""
+    return os.environ.get("OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY") or ""
 
 
 def _resolve_base_url(flag_value: str | None) -> str | None:
     if flag_value:
         return flag_value
-    return os.environ.get("BOOK_TRANSLATOR_BASE_URL") or None
+    return os.environ.get("OPENAI_BASE_URL") or None
 
 
 def _set_state(store: JobStore, run_id: str, state: str) -> None:
@@ -82,9 +82,9 @@ def translate_cmd(
     input_file: Path = typer.Argument(..., help="Input file (.epub, .txt, .md, .markdown)"),
     source_lang: str = typer.Option(..., "--source-lang", "-s", help="Source language code (e.g. en)"),
     target_lang: str = typer.Option(..., "--target-lang", "-t", help="Target language code (e.g. ru)"),
-    model: str = typer.Option("gpt-4o-mini", "--model", "-m", help="OpenAI model name"),
-    api_key: str | None = typer.Option(None, "--api-key", help="OpenAI API key", envvar="BOOK_TRANSLATOR_API_KEY"),
-    base_url: str | None = typer.Option(None, "--base-url", help="Custom OpenAI base URL", envvar="BOOK_TRANSLATOR_BASE_URL"),
+    model: str = typer.Option("gpt-5.4-mini", "--model", "-m", help="OpenAI model name"),
+    api_key: str | None = typer.Option(None, "--api-key", help="OpenAI API key", envvar="OPENAI_API_KEY"),
+    base_url: str | None = typer.Option(None, "--base-url", help="Custom OpenAI base URL", envvar="OPENAI_BASE_URL"),
     output: Path | None = typer.Option(None, "--output", "-o", help="Output EPUB path (default: cwd/<stem>.<target_lang>.epub)"),
     context_window: int = typer.Option(3, "--context-window", help="Translation context window size"),
     concurrency: int = typer.Option(5, "--concurrency", help="Concurrent translation requests"),
@@ -206,7 +206,7 @@ def translate_cmd(
         hint = ""
         exc_str = str(exc)
         if "auth" in exc_str.lower() or "401" in exc_str or "403" in exc_str:
-            hint = " Hint: check --api-key or BOOK_TRANSLATOR_API_KEY."
+            hint = " Hint: check --api-key or OPENAI_API_KEY."
         typer.echo(f"Error: translation failed — {exc}{hint}", err=True)
         typer.echo(f"Run retained: {run_id}  path: {run_dir}", err=True)
         raise typer.Exit(code=1)
@@ -215,7 +215,7 @@ def translate_cmd(
         typer.echo(f"Error: {exc}", err=True)
         typer.echo(f"Run retained: {run_id}  path: {run_dir}", err=True)
         if not resolved_api_key:
-            typer.echo("Hint: no API key found. Set --api-key or BOOK_TRANSLATOR_API_KEY.", err=True)
+            typer.echo("Hint: no API key found. Set --api-key or OPENAI_API_KEY.", err=True)
         raise typer.Exit(code=1)
 
 

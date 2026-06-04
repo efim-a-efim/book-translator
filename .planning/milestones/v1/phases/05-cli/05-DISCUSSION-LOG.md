@@ -26,9 +26,9 @@
   - `--cleanup` added for removing terminal preserved runs (D-19)
 
 ### 3. API Key / Auth
-- Resolution chain: `--api-key` → `BOOK_TRANSLATOR_API_KEY` → `OPENAI_API_KEY`
+- Resolution chain: `--api-key` → `OPENAI_API_KEY` → `OPENAI_API_KEY`
 - No interactive prompt; empty string if absent; hint on auth failure
-- Base URL: `--base-url` → `BOOK_TRANSLATOR_BASE_URL` → None
+- Base URL: `--base-url` → `OPENAI_BASE_URL` → None
 
 ### 4. Output & Verbosity
 - Plain text only; no Rich decorative output (panels/colors)
@@ -67,10 +67,10 @@
 | D-06 | `--verbose`: step logs + non-secret settings/paths |
 | D-07 | No JSON output mode |
 | D-08 | Plain output only; no Rich panels/colors |
-| D-09 | API key: `--api-key` → `BOOK_TRANSLATOR_API_KEY` → `OPENAI_API_KEY` |
+| D-09 | API key: `--api-key` → `OPENAI_API_KEY` → `OPENAI_API_KEY` |
 | D-10 | No prompt on missing key; empty string; hint on auth failure |
 | D-11 | `meta.json`: no secrets; model, langs, base_url, context_window, concurrency, retries, input metadata, state, timestamps |
-| D-12 | Base URL: `--base-url` → `BOOK_TRANSLATOR_BASE_URL` → None |
+| D-12 | Base URL: `--base-url` → `OPENAI_BASE_URL` → None |
 | D-13 | Exit codes: 0 success, 1 runtime, 2 CLI usage |
 | D-14 | On failure: retain partial job dir; print run ID + path |
 | D-15 | Default: concise error + hint; verbose adds step context; no secrets |

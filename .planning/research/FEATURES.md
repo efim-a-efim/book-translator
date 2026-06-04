@@ -99,7 +99,7 @@ Features that distinguish this tool from Calibre plugins, DeepL document upload,
 
 ### Open Model Selection
 
-**Value:** Users can use cheap models (GPT-4o-mini) for quick drafts or premium models (Claude Opus, Llama 3 70B) for quality. DeepL and Google Translate offer no model choice.
+**Value:** Users can use cheap models (gpt-5.4-mini) for quick drafts or premium models (Claude Opus, Llama 3 70B) for quality. DeepL and Google Translate offer no model choice.
 
 - Any OpenRouter model by slug
 - Self-hosted models via Ollama or LM Studio (OpenAI-compatible endpoint)
@@ -187,7 +187,7 @@ Based on established CLI tools (Celery, rq, ffmpeg, yt-dlp, rsync):
 
 ### Start a Job
 ```
-$ translate book.epub --to en --model openai/gpt-4o-mini
+$ translate book.epub --to en --model openai/gpt-5.4-mini
 Job started: job_a1b2c3
 Progress: http://localhost is NOT required — use: translate status job_a1b2c3
 ```
@@ -201,7 +201,7 @@ Progress:  142 / 1847 paragraphs (7.7%)
 Chapter:   3 / 22
 ETA:       ~38 min
 Started:   2026-05-19 14:22:01
-Model:     openai/gpt-4o-mini
+Model:     openai/gpt-5.4-mini
 ```
 
 ### Completion

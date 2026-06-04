@@ -81,7 +81,7 @@ def test_supported_suffixes_constant():
 
 
 def test_resolve_api_key_flag_takes_priority(monkeypatch):
-    monkeypatch.setenv("BOOK_TRANSLATOR_API_KEY", "env-key")
+    monkeypatch.setenv("OPENAI_API_KEY", "env-key")
     monkeypatch.setenv("OPENAI_API_KEY", "openai-key")
     from book_translator.cli import _resolve_api_key
 
@@ -89,16 +89,16 @@ def test_resolve_api_key_flag_takes_priority(monkeypatch):
 
 
 def test_resolve_api_key_book_translator_env(monkeypatch):
-    monkeypatch.delenv("BOOK_TRANSLATOR_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.setenv("OPENAI_API_KEY", "openai-key")
-    monkeypatch.setenv("BOOK_TRANSLATOR_API_KEY", "bt-key")
+    monkeypatch.setenv("OPENAI_API_KEY", "bt-key")
     from book_translator.cli import _resolve_api_key
 
     assert _resolve_api_key(None) == "bt-key"
 
 
 def test_resolve_api_key_falls_back_to_openai(monkeypatch):
-    monkeypatch.delenv("BOOK_TRANSLATOR_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.setenv("OPENAI_API_KEY", "openai-key")
     from book_translator.cli import _resolve_api_key
 
@@ -106,7 +106,7 @@ def test_resolve_api_key_falls_back_to_openai(monkeypatch):
 
 
 def test_resolve_api_key_empty_string_when_absent(monkeypatch):
-    monkeypatch.delenv("BOOK_TRANSLATOR_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     from book_translator.cli import _resolve_api_key
 
@@ -114,14 +114,14 @@ def test_resolve_api_key_empty_string_when_absent(monkeypatch):
 
 
 def test_resolve_base_url_none_when_absent(monkeypatch):
-    monkeypatch.delenv("BOOK_TRANSLATOR_BASE_URL", raising=False)
+    monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
     from book_translator.cli import _resolve_base_url
 
     assert _resolve_base_url(None) is None
 
 
 def test_resolve_base_url_env(monkeypatch):
-    monkeypatch.setenv("BOOK_TRANSLATOR_BASE_URL", "http://localhost:1234/v1")
+    monkeypatch.setenv("OPENAI_BASE_URL", "http://localhost:1234/v1")
     from book_translator.cli import _resolve_base_url
 
     assert _resolve_base_url(None) == "http://localhost:1234/v1"
@@ -294,7 +294,7 @@ def test_list_shows_run_info(runner, tmp_store):
 
     store = JobStore(tmp_store)
     meta = JobMeta(
-        model="gpt-4o-mini",
+        model="gpt-5.4-mini",
         params={
             "state": STATE_FAILED,
             "started_at": "2026-06-02T10:00:00+00:00",
@@ -312,7 +312,7 @@ def test_list_shows_header(runner, tmp_store):
     from book_translator.models.job import JobMeta
 
     store = JobStore(tmp_store)
-    store.create_run(JobMeta(model="gpt-4o-mini", params={"state": STATE_UNKNOWN}))
+    store.create_run(JobMeta(model="gpt-5.4-mini", params={"state": STATE_UNKNOWN}))
     result = runner.invoke(app, ["list"])
     assert "RUN ID" in result.output
     assert "STATE" in result.output

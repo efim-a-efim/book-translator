@@ -22,7 +22,7 @@ Phase 5 discussion complete. Key scope decisions locked (D-01..D-21):
 - `--cleanup` to remove terminal runs (failed+completed)
 - `--output PATH` for final EPUB destination
 - Exit codes 0/1/2; plain text output; no Rich decorative output
-- API key: `--api-key` → `BOOK_TRANSLATOR_API_KEY` → `OPENAI_API_KEY`
+- API key: `--api-key` → `OPENAI_API_KEY` → `OPENAI_API_KEY`
 
 Discussion artifacts: `.planning/phases/05-cli/05-CONTEXT.md`, `.planning/phases/05-cli/05-DISCUSSION-LOG.md`
 

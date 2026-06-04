@@ -45,7 +45,7 @@ uv sync --all-extras          # or: pip install -e ".[dev]"
 
 ```bash
 # Set your API key
-export BOOK_TRANSLATOR_API_KEY=sk-...
+export OPENAI_API_KEY=sk-...
 
 # Translate an EPUB from English to Russian
 book-translator translate my-book.epub --source-lang en --target-lang ru
@@ -75,9 +75,9 @@ book-translator translate <FILE> [OPTIONS]
 |--------|-------|---------|-------------|
 | `--source-lang TEXT` | `-s` | *(required)* | Source language code (e.g. `en`, `fr`, `de`) |
 | `--target-lang TEXT` | `-t` | *(required)* | Target language code (e.g. `ru`, `zh`, `es`) |
-| `--model TEXT` | `-m` | `gpt-4o-mini` | OpenAI model name |
-| `--api-key TEXT` | | `$BOOK_TRANSLATOR_API_KEY` | API key |
-| `--base-url TEXT` | | `$BOOK_TRANSLATOR_BASE_URL` | Custom API base URL |
+| `--model TEXT` | `-m` | `gpt-5.4-mini` | OpenAI model name |
+| `--api-key TEXT` | | `$OPENAI_API_KEY` | API key |
+| `--base-url TEXT` | | `$OPENAI_BASE_URL` | Custom API base URL |
 | `--output PATH` | `-o` | `<cwd>/<stem>.<target>.epub` | Output EPUB path |
 | `--context-window INT` | | `3` | Surrounding paragraphs for context |
 | `--concurrency INT` | | `5` | Concurrent translation requests |
@@ -140,11 +140,11 @@ Deletes all preserved runs in terminal states (`failed`, `completed`). Skips `ru
 
 | Variable | Purpose |
 |----------|---------|
-| `BOOK_TRANSLATOR_API_KEY` | API key (checked first) |
-| `BOOK_TRANSLATOR_BASE_URL` | Custom OpenAI-compatible base URL |
-| `OPENAI_API_KEY` | Fallback API key if `BOOK_TRANSLATOR_API_KEY` is not set |
+| `OPENAI_API_KEY` | API key (checked first) |
+| `OPENAI_BASE_URL` | Custom OpenAI-compatible base URL |
+| `OPENAI_API_KEY` | Fallback API key if `OPENAI_API_KEY` is not set |
 
-**Precedence:** `--api-key` flag → `BOOK_TRANSLATOR_API_KEY` → `OPENAI_API_KEY`
+**Precedence:** `--api-key` flag → `OPENAI_API_KEY` → `OPENAI_API_KEY`
 
 ---
 
@@ -153,7 +153,7 @@ Deletes all preserved runs in terminal states (`failed`, `completed`). Skips `ru
 ### OpenAI (default)
 
 ```bash
-export BOOK_TRANSLATOR_API_KEY=sk-...
+export OPENAI_API_KEY=sk-...
 book-translator translate book.epub -s en -t ru
 ```
 
@@ -203,7 +203,7 @@ The output is a valid EPUB where each original paragraph is immediately followed
 Only `.epub`, `.txt`, `.md`, `.markdown` are supported. FB2 support is planned for v2.
 
 **`Error: translation failed — 401`**  
-API key is missing or invalid. Set `BOOK_TRANSLATOR_API_KEY` or pass `--api-key`.
+API key is missing or invalid. Set `OPENAI_API_KEY` or pass `--api-key`.
 
 **`Error: translation failed — 429`**  
 Rate limited. The tool retries automatically with exponential backoff. Reduce `--concurrency` if persistent.

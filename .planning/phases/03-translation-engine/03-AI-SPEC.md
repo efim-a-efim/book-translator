@@ -282,7 +282,7 @@ Translate the text inside <source_text> tags:
 
 ### Cost and Latency Budget
 
-- **Per-paragraph cost (estimate):** ~700 input tokens + ~100 output tokens = ~800 tokens. At $0.002/1K tokens (GPT-4o-mini via OpenRouter): ~$0.0016/paragraph.
+- **Per-paragraph cost (estimate):** ~700 input tokens + ~100 output tokens = ~800 tokens. At $0.002/1K tokens (gpt-5.4-mini via OpenRouter): ~$0.0016/paragraph.
 - **Typical novel:** 50,000–100,000 paragraphs → $80–$160 total. Users should be aware.
 - **Caching:** Context paragraphs repeat across adjacent requests — OpenAI prompt caching (enabled by default for inputs >1024 tokens) reduces effective cost by ~30–50% for long books.
 - **Latency:** With semaphore=5 and 200ms/request avg: 50,000 paragraphs ÷ 5 concurrent = 10,000 batches × 200ms = ~33 min. Acceptable for a background job.

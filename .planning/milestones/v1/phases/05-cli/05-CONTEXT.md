@@ -138,13 +138,13 @@ run directories from invalid input.
 
 ### API Key & Base URL
 
-**D-09** — API key resolution order: `--api-key` flag → `BOOK_TRANSLATOR_API_KEY`
+**D-09** — API key resolution order: `--api-key` flag → `OPENAI_API_KEY`
 env → `OPENAI_API_KEY` env.
 
 **D-10** — If no key found, no interactive prompt. Pass empty string; on
 auth/HTTP failure print a hint directing user to `--api-key` or the env variable.
 
-**D-12** — Base URL resolution: `--base-url` flag → `BOOK_TRANSLATOR_BASE_URL`
+**D-12** — Base URL resolution: `--base-url` flag → `OPENAI_BASE_URL`
 env → `None` (use library default).
 
 ### Output & Verbosity
