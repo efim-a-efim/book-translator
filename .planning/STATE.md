@@ -17,7 +17,7 @@ See: `.planning/PROJECT.md`
 Phase: Not started (defining requirements)
 Plan: —
 Status: Defining requirements
-Last activity: 2026-06-04 - Completed quick task 260604-kax: Add progress output to `-v`
+Last activity: 2026-06-04 - Completed quick task 260604-l64: Add batching for paragraphs translation
 
 ## Phase Progress
 | Phase | Name | Status |
@@ -37,3 +37,4 @@ Last activity: 2026-06-04 - Completed quick task 260604-kax: Add progress output
 | ID | Description | Date | Commit | Directory |
 |----|-------------|------|--------|-----------|
 | 260604-kax | Add progress output to `-v` | 2026-06-04 | 5d4c3ef | [260604-kax-add-progress-output-to-v](./quick/260604-kax-add-progress-output-to-v/) |
+| 260604-l64 | Add batching for paragraphs translation | 2026-06-04 | 487842f | [260604-l64-add-batching-for-paragraphs-translation](./quick/260604-l64-add-batching-for-paragraphs-translation/) |
