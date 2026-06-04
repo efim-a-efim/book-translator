@@ -3,8 +3,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from openai import APIConnectionError, APIStatusError, AsyncOpenAI, RateLimitError
 from tenacity import (
