@@ -55,15 +55,37 @@
 
 ## Traceability
 
-Populated by roadmapper.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
+| MODE-01 | Phase 7 | Pending |
+| MODE-02 | Phase 7 | Pending |
+| MODE-03 | Phase 7 | Pending |
+| MODE-04 | Phase 7 | Pending |
+| MODE-05 | Phase 7 | Pending |
+| SENT-01 | Phase 8 | Pending |
+| SENT-02 | Phase 8 | Pending |
+| SENT-03 | Phase 8 | Pending |
+| SENT-04 | Phase 8 | Pending |
+| SENT-05 | Phase 8 | Pending |
+| SENT-06 | Phase 8 | Pending |
+| SENT-07 | Phase 8 | Pending |
+| SENT-08 | Phase 8 | Pending |
+| SENT-09 | Phase 8 | Pending |
+| SENT-10 | Phase 8 | Pending |
+| MONO-01 | Phase 9 | Pending |
+| MONO-02 | Phase 9 | Pending |
+| MONO-03 | Phase 9 | Pending |
+| MONO-04 | Phase 9 | Pending |
+| MONO-05 | Phase 9 | Pending |
+| MONO-06 | Phase 9 | Pending |
+| MONO-07 | Phase 9 | Pending |
+| COMPAT-01 | Phase 10 | Pending |
+| COMPAT-02 | Phase 10 | Pending |
 
 **Coverage:**
-- v2 requirements: 23 total
-- Mapped to phases: 0
-- Unmapped: 23 ⚠️
+- v2 requirements: 24 total (MODE×5 + SENT×10 + MONO×7 + COMPAT×2; doc-level count corrected from 23)
+- Mapped to phases: 24
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-06-04*

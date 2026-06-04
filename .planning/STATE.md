@@ -22,7 +22,10 @@ Last activity: 2026-06-04 — Milestone v2 started
 ## Phase Progress
 | Phase | Name | Status |
 |-------|------|--------|
-| — | — | Phases will be created by roadmapper |
+| 7 | Mode Selection & CLI Dispatch | ○ Pending |
+| 8 | Per-Sentence Mode | ○ Pending |
+| 9 | Monolingual Mode | ○ Pending |
+| 10 | Backwards Compatibility Verification | ○ Pending |
 
 ## v1 Milestone (closed)
 - Closed 2026-06-03, status tech_debt accepted
