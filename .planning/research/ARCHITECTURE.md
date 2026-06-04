@@ -365,7 +365,7 @@ book-translator translate <file> [OPTIONS]
     --model         TEXT  (required; no default)
     --api-base      TEXT  (default: https://openrouter.ai/api/v1)
     --api-key       TEXT  (or OPENROUTER_API_KEY env)
-    --concurrency   INT   (default: 5)
+    --concurrency   INT   (default: 8)
     --output        PATH  (default: <input-stem>_bilingual.epub)
 
 book-translator status <run-id>
