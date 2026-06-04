@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
 from collections.abc import Callable
@@ -17,10 +18,16 @@ from tenacity import (
 )
 
 from book_translator.models.document import BookDocument, Paragraph
-from book_translator.translator.chunker import build_context_window
+from book_translator.translator.chunker import (
+    DEFAULT_CONTEXT_TOKEN_BUDGET,
+    MAX_PREVIOUS_CONTEXT_PARAGRAPHS,
+    TranslationBatch,
+    build_batch_context,
+    build_translation_batches,
+)
 from book_translator.translator.client import create_client
 from book_translator.translator.exceptions import TranslationError
-from book_translator.translator.prompt import build_system_prompt, build_user_message
+from book_translator.translator.prompt import TRANSLATION_RESPONSE_FORMAT, build_system_prompt, build_user_message
 
 logger = logging.getLogger(__name__)
 
@@ -33,13 +40,36 @@ def _is_retryable(exc: BaseException) -> bool:
     return False
 
 
-async def translate_paragraph(
+def _parse_batch_translations(content: str | None, expected_ids: set[str]) -> dict[str, str]:
+    if not content or not content.strip():
+        return {}
+    try:
+        payload = json.loads(content)
+    except json.JSONDecodeError:
+        return {}
+    translations = payload.get("translations") if isinstance(payload, dict) else None
+    if not isinstance(translations, list):
+        return {}
+    parsed: dict[str, str] = {}
+    for item in translations:
+        if not isinstance(item, dict):
+            continue
+        item_id = item.get("id")
+        text = item.get("text")
+        if item_id in expected_ids and isinstance(text, str) and text.strip():
+            parsed[item_id] = text.strip()
+    return parsed
+
+
+async def translate_batch(
     client: AsyncOpenAI,
     model: str,
+    batch: TranslationBatch,
     messages: list[dict],
     max_retries: int,
     semaphore: asyncio.Semaphore,
-) -> str:
+) -> dict[str, str]:
+    expected_ids = {para.id for para in batch.items}
     async with semaphore:
         try:
             async for attempt in AsyncRetrying(
@@ -54,14 +84,13 @@ async def translate_paragraph(
                         model=model,
                         messages=messages,
                         temperature=0.3,
+                        response_format=TRANSLATION_RESPONSE_FORMAT,
                     )
                     content = response.choices[0].message.content
-                    if not content or not content.strip():
-                        return "[TRANSLATION FAILED]"
-                    return content.strip()
+                    return _parse_batch_translations(content, expected_ids)
         except (RateLimitError, APIConnectionError) as exc:
             logger.warning("Translation failed after %d retries: %s", max_retries, exc)
-            return "[TRANSLATION FAILED]"
+            return {}
         except APIStatusError as exc:
             if exc.status_code >= 500:
                 logger.warning(
@@ -70,8 +99,21 @@ async def translate_paragraph(
                     exc.status_code,
                     exc,
                 )
-                return "[TRANSLATION FAILED]"
+                return {}
             raise  # Non-retryable 4xx (401, 403, 400, etc.) — caller handles
+
+
+async def translate_paragraph(
+    client: AsyncOpenAI,
+    model: str,
+    messages: list[dict],
+    max_retries: int,
+    semaphore: asyncio.Semaphore,
+) -> str:
+    para = Paragraph(id="paragraph", text="", raw_html="")
+    batch = TranslationBatch(items=[para], context=[])
+    result = await translate_batch(client, model, batch, messages, max_retries, semaphore)
+    return result.get("paragraph", "[TRANSLATION FAILED]")
 
 
 def _find_source_json(job_dir: Path) -> Path:
@@ -115,31 +157,36 @@ async def translate(
     total_translatable = sum(1 for p in flat if _is_translatable(p))
     completed_translatable = 0
     semaphore = asyncio.Semaphore(concurrency)
+    batches = build_translation_batches(doc, context_token_budget=DEFAULT_CONTEXT_TOKEN_BUDGET)
+    context_limit = min(max(context_window, 0), MAX_PREVIOUS_CONTEXT_PARAGRAPHS)
 
     async with create_client(api_key, base_url) as client:
 
-        async def translate_one(idx: int, para: Paragraph) -> None:
+        async def translate_one(batch: TranslationBatch) -> None:
             nonlocal completed_translatable
-            if not _is_translatable(para):
-                return
-            before, after = build_context_window(flat, idx, context_window)
+            request_batch = TranslationBatch(
+                items=batch.items,
+                context=build_batch_context(doc, batch.items[0], previous_context_limit=context_limit),
+            )
             sys_prompt = build_system_prompt(source_lang, target_lang)
-            user_msg = build_user_message(para, before, after)
+            user_msg = build_user_message(request_batch, source_lang, target_lang)
             messages = [
                 {"role": "system", "content": sys_prompt},
                 {"role": "user", "content": user_msg},
             ]
             try:
-                para.translation = await translate_paragraph(client, model, messages, max_retries, semaphore)
+                translations = await translate_batch(client, model, request_batch, messages, max_retries, semaphore)
             except Exception as exc:
-                logger.warning("Paragraph %s failed (non-retryable): %s", para.id, exc)
-                para.translation = "[TRANSLATION FAILED]"
-            completed_translatable += 1
-            if progress_callback is not None:
-                progress_callback(completed_translatable, total_translatable)
+                logger.warning("Translation batch failed (non-retryable): %s", exc)
+                translations = {}
+            for para in batch.items:
+                para.translation = translations.get(para.id, "[TRANSLATION FAILED]")
+                completed_translatable += 1
+                if progress_callback is not None:
+                    progress_callback(completed_translatable, total_translatable)
 
-        tasks = [translate_one(i, p) for i, p in enumerate(flat)]
-        await asyncio.gather(*tasks)
+        for batch in batches:
+            await translate_one(batch)
 
     dst = _dst_path(src_file, job_dir, target_lang)
     _write_translated(doc, dst)
