@@ -8,33 +8,52 @@ An open-source AI-powered fiction book translator that converts books (EPUB, FB2
 
 A reader opens the output EPUB in any EPUB app and can follow the story paragraph-by-paragraph, seeing original and translated text together — without any special reader software.
 
+## Current Milestone: v2 Translation Modes
+
+**Goal:** Add per-sentence and monolingual translation modes alongside the existing per-page mode, with token-budget batching for cost efficiency.
+
+**Target features:**
+- Per-sentence translation mode (nltk Punkt, token-budget batching, structured AI output)
+- Monolingual translation mode (no original text, multi-format output)
+- Backward-compatible default (per-page mode unchanged)
+
 ## Requirements
 
 ### Validated
 
-(None yet — ship to validate)
+- [x] Parse source books in EPUB, FB2, FB2.ZIP, TXT, and Markdown formats — v1.0
+- [x] Translate book content using any OpenRouter / OpenAI-compatible API endpoint and user-specified model — v1.0
+- [x] Output single EPUB with paragraph pairs (original + translation, alternating) — v1.0
+- [x] Translate all special elements (captions, chapter titles, etc.) in the same paired format — v1.0
+- [x] Support configurable source and target languages per run — v1.0
+- [x] Support multiple target languages in a single output file (configurable per run) — v1.0
+- [x] "Simple" translation mode: context-windowed chunks (surrounding paragraphs sent with each request) — v1.0
+- [x] "Smart" translation mode: pre-analyze book to extract glossary, character names, style notes; enrich each translation request with this context — v1.0
+- [x] Run translations as persistent background jobs identified by a unique run ID — v1.0
+- [x] Job results survive application restarts (persisted to disk or database by run ID) — v1.0
+- [x] CLI interface: accept book file + configuration → start translation job → report run ID → allow status check and result download — v1.0
+- [x] Progress tracking: show translation progress (paragraphs done / total) during a job — v1.0
 
 ### Active
 
-- [ ] Parse source books in EPUB, FB2, FB2.ZIP, TXT, and Markdown formats
-- [ ] Translate book content using any OpenRouter / OpenAI-compatible API endpoint and user-specified model
-- [ ] Output single EPUB with paragraph pairs (original + translation, alternating)
-- [ ] Translate all special elements (captions, chapter titles, etc.) in the same paired format
-- [ ] Support configurable source and target languages per run
-- [ ] Support multiple target languages in a single output file (configurable per run)
-- [ ] "Simple" translation mode: context-windowed chunks (surrounding paragraphs sent with each request)
-- [ ] "Smart" translation mode: pre-analyze book to extract glossary, character names, style notes; enrich each translation request with this context
-- [ ] Run translations as persistent background jobs identified by a unique run ID
-- [ ] Job results survive application restarts (persisted to disk or database by run ID)
-- [ ] CLI interface: accept book file + configuration → start translation job → report run ID → allow status check and result download
-- [ ] Progress tracking: show translation progress (paragraphs done / total) during a job
+- [ ] Translation mode selection via `--mode {per-page,per-sentence,monolingual}` (default per-page)
+- [ ] Per-sentence mode: nltk Punkt sentence tokenizer with Punkt data bootstrapping
+- [ ] Per-sentence chunking: sentences ≤4 words merged into previous chunk; max 3 sentences per chunk
+- [ ] Headers / sub-headers translated whole (never sentence-chunked)
+- [ ] Token-budget batching: pack many chunks per AI request up to configurable budget (default 4000 input tokens)
+- [ ] Structured AI output (JSON/HTML/XML schema) with chunk-ID round-tripping
+- [ ] Monolingual mode: translated-only output, no original text
+- [ ] Output format selection for monolingual mode: `--output-format {epub,txt,md}`
+- [ ] Per-page mode behavior preserved bit-for-bit when --mode omitted
 
 ### Out of Scope
 
 - Web interface — deferred to a future milestone after core + CLI are stable
 - Real-time translation preview / editor — web milestone only
-- Cloud storage or hosted service — v1 is local/self-hosted only
+- Cloud storage or hosted service — local/self-hosted only
 - OAuth or user accounts — no authentication needed for local CLI tool
+- Multi-target output in a single file (e.g. ru+en+de) — deferred; mode work first
+- Smart-mode pre-analysis (glossary, character names, style notes) — deferred to a later quality-focused milestone
 
 ## Context
 
@@ -49,7 +68,7 @@ A reader opens the output EPUB in any EPUB app and can follow the story paragrap
 - **Tech Stack**: Python — core library and CLI
 - **AI Provider**: OpenRouter or any OpenAI API-compatible endpoint; model is user-specified (no hard-coded model)
 - **Output Format**: EPUB only (input can be EPUB, FB2, FB2.ZIP, TXT, Markdown)
-- **Deployment**: Local / self-hosted only for v1; no cloud infrastructure required
+- **Deployment**: Local / self-hosted only; no cloud infrastructure required
 
 ## Key Decisions
 
@@ -59,6 +78,10 @@ A reader opens the output EPUB in any EPUB app and can follow the story paragrap
 | Smart vs Simple translation modes | Fiction quality varies greatly by context; "smart" pre-analysis amortizes cost over the whole book | — Pending |
 | Persistent run IDs for jobs | Long translations can take minutes; reconnecting to in-progress jobs without losing work is critical | — Pending |
 | OpenRouter / OpenAI-compatible API only | Lets users bring their own model and provider; avoids hard dependency on one vendor | — Pending |
+| Mode selection via single `--mode` CLI flag | One flag is more discoverable and Typer-idiomatic than separate subcommands | — Pending |
+| nltk PunktSentenceTokenizer for sentence split | Stable, ships with Python, multilingual coverage incl. Russian, no model download | — Pending |
+| Token-budget batching with structured AI output | Drastically reduces request count and cost for per-sentence mode; structured output enables reliable chunk-ID round-tripping | — Pending |
+| per-page remains default mode | Backward-compatible with v1 behavior | — Pending |
 
 ## Evolution
 
@@ -78,4 +101,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-19 after initialization*
+*Last updated: 2026-06-04 after v2 milestone start*

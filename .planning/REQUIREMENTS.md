@@ -1,63 +1,70 @@
-# Book Translator Requirements
+# Requirements: Book Translator — v2 Milestone
 
-AI-powered fiction book translator. Produces bilingual EPUB (paragraph pairs: original + translation). CLI tool, Python, OSS.
+**Defined:** 2026-06-04
+**Milestone:** v2 Translation Modes
+**Core Value:** A reader opens the output EPUB in any EPUB app and can follow the story paragraph-by-paragraph, seeing original and translated text together.
 
-## v1 Functional Requirements
+## v2 Requirements
 
-### Inputs
-1. Accept EPUB files as input.
-2. Accept TXT files (split into paragraphs).
-3. Accept Markdown files (split into paragraphs).
+### Mode Selection
 
-### Translation Engine
-4. Simple mode: context-windowed chunking (surrounding paragraphs included in each prompt).
-5. Support any OpenAI-compatible API endpoint with user-specified model + API key (OpenRouter, etc.).
-6. Retry with exponential backoff on rate limits and transient errors (via tenacity).
+- [ ] **MODE-01**: User can select translation mode via `--mode` CLI flag with values `per-page`, `per-sentence`, `monolingual`
+- [ ] **MODE-02**: Omitting `--mode` defaults to `per-page` and produces output bit-for-bit identical to v1 for the same inputs
+- [ ] **MODE-03**: Invalid `--mode` value exits with code 2 and a clear error listing valid values
+- [ ] **MODE-04**: `--output-format` is rejected for non-monolingual modes (exit code 2)
+- [ ] **MODE-05**: `--batch-token-budget` is rejected for non-per-sentence modes (exit code 2)
 
-### EPUB Output
-7. Generate bilingual EPUB with paragraph pairs (original + translation) for each original paragraph.
-8. Translate and pair special elements: chapter titles, captions, footnotes.
-9. Split oversized chapters to stay under e-reader file limits (~300KB).
+### Per-Sentence Mode
 
-### Job Management
-10. No database — use file/directory-based persistence only.
-11. Use self-describing directory structure: `src/<book_name>.<lang_from>.<ext>` and `dst/<book_name>.<lang_to>.epub`; language pair derivable from file names.
-12. Minimize special metadata files — store only what cannot be derived from file names (e.g., model name, API parameters).
-13. Each run gets a unique persistent run ID (directory name).
-14. Job listing = listing run directories.
+- [ ] **SENT-01**: Paragraphs are split into sentences using nltk PunktSentenceTokenizer
+- [ ] **SENT-02**: Punkt data is downloaded automatically on first use if missing
+- [ ] **SENT-03**: Sentences of 4 words or fewer are merged into the preceding chunk in the same paragraph
+- [ ] **SENT-04**: A chunk never contains more than 3 sentences
+- [ ] **SENT-05**: Headers and sub-headers are translated as a single whole unit, never sentence-chunked
+- [ ] **SENT-06**: Per-sentence output is bilingual: each chunk's original text is followed by its translation in the rendered EPUB
+- [ ] **SENT-07**: AI requests are batched: multiple chunks per request, packed until the configured token budget is reached
+- [ ] **SENT-08**: Token budget is configurable via `--batch-token-budget N` (default 4000 input tokens)
+- [ ] **SENT-09**: Each batched request uses structured output (JSON or equivalent) and includes per-chunk IDs so translations round-trip back to the right chunks
+- [ ] **SENT-10**: A batch that fails or returns malformed structured output is retried per existing translation-engine retry policy; persistent failure surfaces a clear error and retains the run
 
-## v1 Non-Functional Requirements
+### Monolingual Mode
 
-### CLI
-15. CLI is fully standalone — no dependency on any running web server or application API; only external dependency is the AI provider API.
-16. `translate <file> --from <lang_from> --to <lang_to> --model <model> --api-key <key> [--base-url <url>]` command.
-17. `--verbose` flag for detailed logging.
+- [ ] **MONO-01**: Monolingual mode produces output containing only the translated text (no original)
+- [ ] **MONO-02**: Output format is selectable via `--output-format {epub,txt,md}`
+- [ ] **MONO-03**: Default `--output-format` for monolingual mode is `epub`
+- [ ] **MONO-04**: Monolingual EPUB renders chapters and headings cleanly (no paragraph pairing, no source-language interleaving)
+- [ ] **MONO-05**: Monolingual TXT output preserves chapter / heading boundaries with clear textual separators
+- [ ] **MONO-06**: Monolingual Markdown output preserves chapter / heading structure as Markdown headings
+- [ ] **MONO-07**: Monolingual mode reuses existing translation-engine chunking and retry behavior
 
-### Performance / Reliability
-18. Retry mechanism must not block the entire run on transient failures (graceful degradation).
-19. Ensure e-reader files stay under limits to prevent corruption on small devices.
+### Backwards Compatibility
 
-### Tech Stack
-20. Python implementation.
-21. OSS (open source).
+- [ ] **COMPAT-01**: All v1 CLI invocations (no `--mode`) work unchanged and pass the existing 120-test suite
+- [ ] **COMPAT-02**: No changes to existing v1 public APIs (BookDocument, JobStore, translator entry points) that break v1 callers; additions only
 
-## v2 Deferred Features
+## Out of Scope
 
-- FB2 / FB2.ZIP input (handle Windows-1251 encoding)
-- Smart mode: pre-analyze book → extract character glossary + style notes → inject into every translation prompt
-- Multi-language per run (multiple --to targets)
-- EPUB metadata preservation (language tags, title, author)
-- RTL language support (Arabic, Hebrew — CSS dir attribute)
-- Resume from checkpoint (restart interrupted job from last completed chunk)
-- Progress tracking (chunks done / total, ETA)
-- `status <run-id>` command
-- `download <run-id>` command
-- `list` command
-- Config file support (~/.config/book-translator/)
-- Web interface
+| Feature | Reason |
+|---------|--------|
+| Web UI | Deferred to a later milestone |
+| Real-time translation preview / editor | Web milestone only |
+| Multi-target output in a single file (e.g. ru+en+de) | Deferred; mode work first |
+| Smart-mode pre-analysis (glossary, character names, style notes) | Deferred to a later quality-focused milestone |
+| Cloud / hosted service | Local / self-hosted only |
+| OAuth / user accounts | Local CLI tool, no auth needed |
 
-## Out of Scope (forever)
+## Traceability
 
-- PDF / OCR support (Calibre handles upstream).
-- Cloud hosting / SaaS.
-- Real-time collaborative editing.
+Populated by roadmapper.
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+
+**Coverage:**
+- v2 requirements: 23 total
+- Mapped to phases: 0
+- Unmapped: 23 ⚠️
+
+---
+*Requirements defined: 2026-06-04*
+*Last updated: 2026-06-04 after v2 milestone start*

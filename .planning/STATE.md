@@ -1,37 +1,30 @@
 # Project State
 
-**Current Phase:** — (v1 closed)  
-**Status:** v1 milestone closed (tech_debt accepted) — 2026-06-03  
-**Last Updated:** 2026-06-03
+**Current Milestone:** v2 Translation Modes
+**Current Phase:** Not started (defining requirements)
+**Status:** Planning
+**Last Updated:** 2026-06-04
+
+## Project Reference
+
+See: `.planning/PROJECT.md`
+
+**Core value:** A reader opens the output EPUB in any EPUB app and can follow the story paragraph-by-paragraph, seeing original and translated text together.
+**Current focus:** v2 Translation Modes — per-sentence and monolingual modes.
+
+## Current Position
+
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-06-04 — Milestone v2 started
 
 ## Phase Progress
-| Phase | Name                  | Status        |
-|-------|-----------------------|---------------|
-| 1     | Foundation            | ✓ Complete    |
-| 2     | Parsers              | ✓ Complete    |
-| 3     | Translation Engine   | ✓ Complete    |
-| 4     | EPUB Assembler       | ✓ Complete    |
-| 5     | CLI                  | ✓ Complete    |
-| 6     | Polish & Release     | ✓ Complete    |
+| Phase | Name | Status |
+|-------|------|--------|
+| — | — | Phases will be created by roadmapper |
 
-## Notes
-Phase 5 discussion complete. Key scope decisions locked (D-01..D-21):
-- `translate` command only (no step subcommands)
-- Auto-delete successful runs after EPUB placed; retain failed runs
-- `list` command for preserved run management
-- `--cleanup` to remove terminal runs (failed+completed)
-- `--output PATH` for final EPUB destination
-- Exit codes 0/1/2; plain text output; no Rich decorative output
-- API key: `--api-key` → `OPENAI_API_KEY` → `OPENAI_API_KEY`
-
-Discussion artifacts: `.planning/phases/05-cli/05-CONTEXT.md`, `.planning/phases/05-cli/05-DISCUSSION-LOG.md`
-
-## Last Session
-- Stopped at: Phase 5 discussion complete; 21 decisions locked; ready for planning
-- Resume file: `.planning/phases/05-cli/05-CONTEXT.md`
-
-## Milestone Closure
-- v1 closed: 2026-06-03
-- Final status: tech_debt (accepted)
-- All 6 phases complete, 21/21 requirements satisfied
-- Next milestone: TBD. v1 artifacts archived to `.planning/milestones/v1/`
+## v1 Milestone (closed)
+- Closed 2026-06-03, status tech_debt accepted
+- 6 phases complete, 21/21 requirements satisfied
+- Archived to `.planning/milestones/v1/`
