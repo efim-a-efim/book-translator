@@ -30,7 +30,7 @@ class MarkdownParser:
         has_h1 = any(el.name == "h1" for el in top_level)
 
         if not has_h1:
-            paragraphs = _extract_blocks(html, "ch_000")
+            paragraphs = _extract_blocks(html, "ch_000", parser="lxml")
             return BookDocument(
                 title=path.stem,
                 chapters=[Chapter(id="ch_000", title=path.stem, paragraphs=paragraphs)],
@@ -45,7 +45,7 @@ class MarkdownParser:
         def flush() -> None:
             nonlocal chapter_idx, current_title, current_elements
             if current_elements:
-                paras = _extract_blocks("".join(current_elements), f"ch_{chapter_idx:03d}")
+                paras = _extract_blocks("".join(current_elements), f"ch_{chapter_idx:03d}", parser="lxml")
                 if paras:
                     chapters.append(
                         Chapter(

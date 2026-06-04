@@ -80,7 +80,7 @@ book-translator translate <FILE> [OPTIONS]
 | `--base-url TEXT` | | `$OPENAI_BASE_URL` | Custom API base URL |
 | `--output PATH` | `-o` | `<cwd>/<stem>.<target>.epub` | Output EPUB path |
 | `--context-window INT` | | `3` | Surrounding paragraphs for context |
-| `--concurrency INT` | | `5` | Concurrent translation requests |
+| `--concurrency INT` | | `8` | Concurrent translation requests |
 | `--max-retries INT` | | `5` | Max retries per paragraph |
 | `--verbose` | `-v` | off | Show step-level logs |
 

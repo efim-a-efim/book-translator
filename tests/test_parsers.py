@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import warnings
 import zipfile
 from io import BytesIO
 from pathlib import Path
 
 import pytest
+from bs4 import XMLParsedAsHTMLWarning
 from ebooklib import epub
 
 from book_translator.parsers import ParseError
@@ -29,7 +31,11 @@ def _make_epub(chapters: list[tuple[str, str, str]]) -> bytes:
     items = []
     for item_id, title, html_body in chapters:
         item = epub.EpubHtml(uid=item_id, file_name=f"{item_id}.xhtml")
-        item.content = f"<html><body>{html_body}</body></html>".encode()
+        item.content = (
+            "<?xml version='1.0' encoding='utf-8'?>"
+            '<html xmlns="http://www.w3.org/1999/xhtml">'
+            f"<body>{html_body}</body></html>"
+        ).encode()
         book.add_item(item)
         items.append(item)
     book.add_item(epub.EpubNcx())
@@ -147,7 +153,11 @@ def test_nav_item_excluded(tmp_path: Path) -> None:
     book.set_title("Nav Test")
     book.set_language("en")
     ch = epub.EpubHtml(uid="ch1", file_name="ch1.xhtml")
-    ch.content = b"<html><body><p>Real content</p></body></html>"
+    ch.content = (
+        b"<?xml version='1.0' encoding='utf-8'?>"
+        b'<html xmlns="http://www.w3.org/1999/xhtml">'
+        b"<body><p>Real content</p></body></html>"
+    )
     book.add_item(ch)
     nav = epub.EpubNav()
     nav.content = b"<html><body><nav>Nav content</nav></body></html>"
@@ -176,6 +186,17 @@ def test_zip_traversal_raises(tmp_path: Path) -> None:
     p.write_bytes(_make_traversal_epub())
     with pytest.raises(ParseError, match="Unsafe"):
         EpubParser().parse(p)
+
+
+def test_no_xml_parsed_as_html_warning(tmp_path: Path) -> None:
+    """Parsing XHTML content must not emit XMLParsedAsHTMLWarning."""
+    data = _make_epub([("ch1", "Ch1", "<p>Hello</p><h2>Head</h2>")])
+    p = tmp_path / "book.epub"
+    p.write_bytes(data)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", XMLParsedAsHTMLWarning)
+        doc = EpubParser().parse(p)
+    assert len(doc.chapters) == 1
 
 
 # ---------------------------------------------------------------------------

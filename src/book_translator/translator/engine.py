@@ -22,14 +22,27 @@ from book_translator.translator.chunker import (
     DEFAULT_CONTEXT_TOKEN_BUDGET,
     MAX_PREVIOUS_CONTEXT_PARAGRAPHS,
     TranslationBatch,
+    _is_translatable,
     build_batch_context,
     build_translation_batches,
 )
 from book_translator.translator.client import create_client
 from book_translator.translator.exceptions import TranslationError
-from book_translator.translator.prompt import TRANSLATION_RESPONSE_FORMAT, build_system_prompt, build_user_message
+from book_translator.translator.prompt import build_system_prompt, build_user_message
 
 logger = logging.getLogger(__name__)
+
+
+async def _create_completion(
+    client: AsyncOpenAI,
+    model: str,
+    messages: list[dict],
+):
+    return await client.chat.completions.create(
+        model=model,
+        messages=messages,
+        temperature=0.3,
+    )
 
 
 def _is_retryable(exc: BaseException) -> bool:
@@ -42,22 +55,50 @@ def _is_retryable(exc: BaseException) -> bool:
 
 def _parse_batch_translations(content: str | None, expected_ids: set[str]) -> dict[str, str]:
     if not content or not content.strip():
+        logger.debug(
+            "Empty/null content from API; no translations parsed. Expected ids: %s",
+            sorted(expected_ids),
+        )
         return {}
     try:
         payload = json.loads(content)
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as exc:
+        logger.warning(
+            "Malformed JSON from API (%s); preview: %.200r; expected ids: %s",
+            exc,
+            content,
+            sorted(expected_ids),
+        )
         return {}
     translations = payload.get("translations") if isinstance(payload, dict) else None
     if not isinstance(translations, list):
+        logger.warning(
+            "'translations' key missing or not a list; payload type=%s keys=%s; expected ids: %s",
+            type(payload).__name__,
+            list(payload.keys()) if isinstance(payload, dict) else "N/A",
+            sorted(expected_ids),
+        )
         return {}
     parsed: dict[str, str] = {}
     for item in translations:
         if not isinstance(item, dict):
+            logger.debug("Skipping non-dict translation item: %r", item)
             continue
         item_id = item.get("id")
         text = item.get("text")
-        if item_id in expected_ids and isinstance(text, str) and text.strip():
-            parsed[item_id] = text.strip()
+        if item_id not in expected_ids:
+            logger.debug("Translation id %r not in expected set; skipping", item_id)
+            continue
+        if not isinstance(text, str) or not text.strip():
+            logger.warning("Translation for id %r has empty/null text; skipping", item_id)
+            continue
+        parsed[item_id] = text.strip()
+    missing = expected_ids - set(parsed.keys())
+    if missing:
+        logger.warning(
+            "Missing translations for ids: %s",
+            sorted(missing),
+        )
     return parsed
 
 
@@ -80,12 +121,7 @@ async def translate_batch(
                 reraise=True,
             ):
                 with attempt:
-                    response = await client.chat.completions.create(
-                        model=model,
-                        messages=messages,
-                        temperature=0.3,
-                        response_format=TRANSLATION_RESPONSE_FORMAT,
-                    )
+                    response = await _create_completion(client, model, messages)
                     content = response.choices[0].message.content
                     return _parse_batch_translations(content, expected_ids)
         except (RateLimitError, APIConnectionError) as exc:
@@ -135,10 +171,6 @@ def _write_translated(doc: BookDocument, dst: Path) -> None:
     os.replace(tmp, dst)
 
 
-def _is_translatable(para: Paragraph) -> bool:
-    return para.kind not in ("image", "table") and bool(para.text and para.text.strip())
-
-
 async def translate(
     job_dir: Path,
     model: str,
@@ -177,10 +209,12 @@ async def translate(
             try:
                 translations = await translate_batch(client, model, request_batch, messages, max_retries, semaphore)
             except Exception as exc:
-                logger.warning("Translation batch failed (non-retryable): %s", exc)
-                translations = {}
+                raise TranslationError(f"Translation batch failed: {exc}") from exc
             for para in batch.items:
-                para.translation = translations.get(para.id, "[TRANSLATION FAILED]")
+                translation = translations.get(para.id, "[TRANSLATION FAILED]")
+                para.translation = translation
+                if translation == "[TRANSLATION FAILED]":
+                    logger.warning("Para %s: no translation returned — writing [TRANSLATION FAILED]", para.id)
                 completed_translatable += 1
                 if progress_callback is not None:
                     progress_callback(completed_translatable, total_translatable)

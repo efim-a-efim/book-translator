@@ -557,3 +557,214 @@ def test_api_key_flag_wins_over_both_envs_to_translate(monkeypatch, runner, tmp_
 
     assert result.exit_code == 0, result.output
     assert captured.get("api_key") == "flag-key"
+
+
+# --- Debug flag tests ---
+
+
+def _make_debug_translate_mock(assemble_side_effect):
+    """Helper returning mock_doc and assemble side effect for debug tests."""
+    mock_doc = MagicMock()
+    mock_doc.to_json.return_value = '{"title":"T","author":"A","source_lang":"en","chapters":[]}'
+    mock_doc.chapters = []
+    return mock_doc
+
+
+def test_debug_flag_accepted(runner, tmp_store, sample_txt):
+    """--debug flag is accepted without errors."""
+    mock_doc = _make_debug_translate_mock(None)
+    with (
+        patch("book_translator.cli._parse_file", return_value=mock_doc),
+        patch("book_translator.cli.translate", new_callable=AsyncMock),
+        patch("book_translator.cli.assemble") as mock_assemble,
+    ):
+
+        def _fake_assemble(job_dir, target_lang):
+            epub = job_dir / "dst" / f"sample.{target_lang}.epub"
+            epub.parent.mkdir(parents=True, exist_ok=True)
+            epub.write_bytes(b"fake-epub")
+            return epub
+
+        mock_assemble.side_effect = _fake_assemble
+        result = runner.invoke(
+            app,
+            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--api-key", "test-key", "--debug"],
+        )
+
+    assert result.exit_code == 0, result.output
+
+
+def test_debug_implies_progress_output(runner, tmp_store, sample_txt):
+    """--debug implies verbose: progress callback fires and output is shown."""
+    async def _fake_translate(**kwargs):
+        kwargs["progress_callback"](1, 2)
+        kwargs["progress_callback"](2, 2)
+
+    mock_doc = _make_debug_translate_mock(None)
+    with (
+        patch("book_translator.cli._parse_file", return_value=mock_doc),
+        patch("book_translator.cli.translate", side_effect=_fake_translate),
+        patch("book_translator.cli.assemble") as mock_assemble,
+    ):
+
+        def _fake_assemble(job_dir, target_lang):
+            epub = job_dir / "dst" / f"sample.{target_lang}.epub"
+            epub.parent.mkdir(parents=True, exist_ok=True)
+            epub.write_bytes(b"fake-epub")
+            return epub
+
+        mock_assemble.side_effect = _fake_assemble
+        result = runner.invoke(
+            app,
+            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--api-key", "test-key", "--debug"],
+        )
+
+    assert result.exit_code == 0, result.output
+    assert "Progress: 1/2 paragraphs translated" in result.output
+    assert "Progress: 2/2 paragraphs translated" in result.output
+
+
+def test_debug_shows_model_and_path_diagnostics(runner, tmp_store, sample_txt):
+    """--debug prints [DEBUG] model, job_dir, source, destination lines."""
+    mock_doc = _make_debug_translate_mock(None)
+    with (
+        patch("book_translator.cli._parse_file", return_value=mock_doc),
+        patch("book_translator.cli.translate", new_callable=AsyncMock),
+        patch("book_translator.cli.assemble") as mock_assemble,
+    ):
+
+        def _fake_assemble(job_dir, target_lang):
+            epub = job_dir / "dst" / f"sample.{target_lang}.epub"
+            epub.parent.mkdir(parents=True, exist_ok=True)
+            epub.write_bytes(b"fake-epub")
+            return epub
+
+        mock_assemble.side_effect = _fake_assemble
+        result = runner.invoke(
+            app,
+            [
+                "translate", str(sample_txt),
+                "--source-lang", "en",
+                "--target-lang", "ru",
+                "--model", "test-model-xyz",
+                "--api-key", "test-key",
+                "--debug",
+            ],
+        )
+
+    assert result.exit_code == 0, result.output
+    assert "[DEBUG] model=test-model-xyz" in result.output
+    assert "[DEBUG] job_dir=" in result.output
+    assert "[DEBUG] source=" in result.output
+    assert "[DEBUG] destination=" in result.output
+
+
+def test_debug_does_not_leak_api_key(runner, tmp_store, sample_txt):
+    """--debug output must never contain the API key value."""
+    mock_doc = _make_debug_translate_mock(None)
+    with (
+        patch("book_translator.cli._parse_file", return_value=mock_doc),
+        patch("book_translator.cli.translate", new_callable=AsyncMock),
+        patch("book_translator.cli.assemble") as mock_assemble,
+    ):
+
+        def _fake_assemble(job_dir, target_lang):
+            epub = job_dir / "dst" / f"sample.{target_lang}.epub"
+            epub.parent.mkdir(parents=True, exist_ok=True)
+            epub.write_bytes(b"fake-epub")
+            return epub
+
+        mock_assemble.side_effect = _fake_assemble
+        result = runner.invoke(
+            app,
+            [
+                "translate", str(sample_txt),
+                "--source-lang", "en",
+                "--target-lang", "ru",
+                "--api-key", "super-secret-api-key-99999",
+                "--debug",
+            ],
+        )
+
+    assert result.exit_code == 0, result.output
+    assert "super-secret-api-key-99999" not in result.output
+
+
+def test_report_debug_failures_with_placeholders(tmp_path, capsys):
+    """dst JSON with placeholders reports 'Translation failures: N/M' to stdout."""
+    from book_translator.cli import _report_debug_failures
+    from book_translator.models.document import BookDocument, Chapter, Paragraph
+
+    ch = Chapter(
+        id="ch0",
+        paragraphs=[
+            Paragraph(id="ch0:0", text="Hello", raw_html="", translation="Hola"),
+            Paragraph(id="ch0:1", text="World", raw_html="", translation="[TRANSLATION FAILED]"),
+            Paragraph(id="ch0:2", text="Foo", raw_html="", translation="[TRANSLATION FAILED]"),
+        ],
+    )
+    doc = BookDocument(title="T", chapters=[ch])
+    dst_dir = tmp_path / "dst"
+    dst_dir.mkdir()
+    (dst_dir / "book.ru.json").write_text(doc.to_json(), encoding="utf-8")
+
+    _report_debug_failures(dst_dir)
+    captured = capsys.readouterr()
+    assert "Translation failures: 2/3" in captured.out
+    assert captured.err == ""
+
+
+def test_report_debug_failures_all_translated(tmp_path, capsys):
+    """dst JSON all translated reports 'Translation OK: all M' to stdout."""
+    from book_translator.cli import _report_debug_failures
+    from book_translator.models.document import BookDocument, Chapter, Paragraph
+
+    ch = Chapter(
+        id="ch0",
+        paragraphs=[
+            Paragraph(id="ch0:0", text="Hello", raw_html="", translation="Hola"),
+            Paragraph(id="ch0:1", text="World", raw_html="", translation="Mundo"),
+            Paragraph(id="ch0:2", text="Foo", raw_html="", translation="Foo traducido"),
+        ],
+    )
+    doc = BookDocument(title="T", chapters=[ch])
+    dst_dir = tmp_path / "dst"
+    dst_dir.mkdir()
+    (dst_dir / "book.ru.json").write_text(doc.to_json(), encoding="utf-8")
+
+    _report_debug_failures(dst_dir)
+    captured = capsys.readouterr()
+    assert "Translation OK: all 3" in captured.out
+    assert captured.err == ""
+
+
+def test_debug_base_url_shown_when_set(runner, tmp_store, sample_txt):
+    """--debug prints base_url when explicitly provided."""
+    mock_doc = _make_debug_translate_mock(None)
+    with (
+        patch("book_translator.cli._parse_file", return_value=mock_doc),
+        patch("book_translator.cli.translate", new_callable=AsyncMock),
+        patch("book_translator.cli.assemble") as mock_assemble,
+    ):
+
+        def _fake_assemble(job_dir, target_lang):
+            epub = job_dir / "dst" / f"sample.{target_lang}.epub"
+            epub.parent.mkdir(parents=True, exist_ok=True)
+            epub.write_bytes(b"fake-epub")
+            return epub
+
+        mock_assemble.side_effect = _fake_assemble
+        result = runner.invoke(
+            app,
+            [
+                "translate", str(sample_txt),
+                "--source-lang", "en",
+                "--target-lang", "ru",
+                "--api-key", "test-key",
+                "--base-url", "https://openrouter.ai/api/v1",
+                "--debug",
+            ],
+        )
+
+    assert result.exit_code == 0, result.output
+    assert "[DEBUG] base_url=https://openrouter.ai/api/v1" in result.output

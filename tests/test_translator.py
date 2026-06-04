@@ -172,7 +172,26 @@ def test_system_prompt_contains_lang_pair() -> None:
 def test_system_prompt_fiction_and_output_only_guidance() -> None:
     result = build_system_prompt("Russian", "English").lower()
     assert any(word in result for word in ["literary", "narrative", "fiction"])
-    assert any(phrase in result for phrase in ["no explanations", "only the translated"])
+    assert any(phrase in result for phrase in ["no explanations", "only the translated", "only json"])
+
+
+def test_system_prompt_contains_json_schema_tags() -> None:
+    """Schema is injected inside <json_schema> XML tags."""
+    result = build_system_prompt("Russian", "English")
+    assert "<json_schema>" in result
+    assert "</json_schema>" in result
+
+
+def test_system_prompt_contains_translations_schema_field() -> None:
+    """Embedded schema declares 'translations' as the top-level output key."""
+    result = build_system_prompt("Russian", "English")
+    assert "translations" in result
+
+
+def test_system_prompt_contains_json_output_guidance() -> None:
+    """Prompt instructs model to return JSON only (no prose)."""
+    result = build_system_prompt("Russian", "English")
+    assert "json" in result.lower()
 
 
 def test_user_message_xml_delimiters_wrap_target() -> None:
@@ -289,36 +308,26 @@ async def test_empty_response_returns_failed_placeholder() -> None:
     mock_response = MagicMock()
     mock_response.choices = [MagicMock()]
     mock_response.choices[0].message.content = ""
+    create_mock = AsyncMock(return_value=mock_response)
     mock_client = MagicMock()
-    mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
+    mock_client.chat.completions.create = create_mock
     sem = asyncio.Semaphore(5)
     result = await translate_paragraph(mock_client, "gpt-4o", [{"role": "user", "content": "hi"}], 3, sem)
     assert result == "[TRANSLATION FAILED]"
+    assert create_mock.call_count == 1
 
 
 async def test_none_response_content_returns_failed_placeholder() -> None:
     mock_response = MagicMock()
     mock_response.choices = [MagicMock()]
     mock_response.choices[0].message.content = None
+    create_mock = AsyncMock(return_value=mock_response)
     mock_client = MagicMock()
-    mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
+    mock_client.chat.completions.create = create_mock
     sem = asyncio.Semaphore(5)
     result = await translate_paragraph(mock_client, "gpt-4o", [{"role": "user", "content": "hi"}], 3, sem)
     assert result == "[TRANSLATION FAILED]"
-
-
-async def test_translate_batch_sends_structured_response_format() -> None:
-    from book_translator.translator.chunker import TranslationBatch
-    from book_translator.translator.engine import translate_batch
-
-    para = Paragraph(id="p1", text="Hello", raw_html="", kind="paragraph")
-    batch = TranslationBatch(items=[para], context=[])
-    mock_client = _make_mock_client('{"translations":[{"id":"p1","text":"Привет"}]}')
-    sem = asyncio.Semaphore(5)
-    result = await translate_batch(mock_client, "gpt-4o", batch, [{"role": "user", "content": "{}"}], 3, sem)
-    call_kwargs = mock_client.chat.completions.create.call_args.kwargs
-    assert call_kwargs["response_format"]["type"] == "json_schema"
-    assert result == {"p1": "Привет"}
+    assert create_mock.call_count == 1
 
 
 async def test_translate_batch_partial_json_marks_only_missing_failed_at_translate_layer(tmp_path: Path) -> None:
@@ -508,6 +517,22 @@ async def test_translate_exhausted_retries_sets_failed_placeholder(tmp_path: Pat
     assert result_doc.chapters[0].paragraphs[0].translation == "[TRANSLATION FAILED]"
 
 
+async def test_translate_raises_translation_error_on_non_retryable_batch_error(tmp_path: Path) -> None:
+    doc = _make_doc(["Target"])
+    _write_fixture_doc(tmp_path, doc, "book.ru.json")
+
+    mock_client = MagicMock()
+    mock_client.chat.completions.create = AsyncMock(side_effect=_make_auth_error())
+    with patch(
+        "book_translator.translator.engine.create_client",
+        _patch_create_client(mock_client),
+    ):
+        with pytest.raises(TranslationError):
+            await translate(tmp_path, "gpt-4o", "test-key", None, "Russian", "en", max_retries=2)
+
+    assert not (tmp_path / "dst" / "book.en.json").exists()
+
+
 async def test_translate_raises_on_missing_src_json(tmp_path: Path) -> None:
     (tmp_path / "src").mkdir()
     (tmp_path / "dst").mkdir()
@@ -527,3 +552,39 @@ async def test_translate_dst_filename_uses_target_lang(tmp_path: Path) -> None:
         await translate(tmp_path, "gpt-4o", "test-key", None, "Russian", "en")
 
     assert (tmp_path / "dst" / "book.en.json").exists()
+
+
+# === _parse_batch_translations diagnostic logging tests ===
+
+import logging  # noqa: E402
+
+
+def test_parse_batch_translations_logs_warning_on_malformed_json(caplog: pytest.LogCaptureFixture) -> None:
+    from book_translator.translator.engine import _parse_batch_translations
+
+    with caplog.at_level(logging.WARNING, logger="book_translator.translator.engine"):
+        result = _parse_batch_translations("not json at all", {"p1"})
+
+    assert result == {}
+    assert "Malformed JSON" in caplog.text
+
+
+def test_parse_batch_translations_logs_warning_on_missing_ids(caplog: pytest.LogCaptureFixture) -> None:
+    from book_translator.translator.engine import _parse_batch_translations
+
+    content = '{"translations":[{"id":"p1","text":"Hello"}]}'
+    with caplog.at_level(logging.WARNING, logger="book_translator.translator.engine"):
+        result = _parse_batch_translations(content, {"p1", "p2"})
+
+    assert result == {"p1": "Hello"}
+    assert "p2" in caplog.text  # missing id logged
+
+
+def test_parse_batch_translations_logs_debug_on_empty_content(caplog: pytest.LogCaptureFixture) -> None:
+    from book_translator.translator.engine import _parse_batch_translations
+
+    with caplog.at_level(logging.DEBUG, logger="book_translator.translator.engine"):
+        result = _parse_batch_translations(None, {"p1"})
+
+    assert result == {}
+    assert "empty/null content" in caplog.text.lower()

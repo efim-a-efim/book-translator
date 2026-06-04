@@ -78,6 +78,29 @@ def _parse_file(input_path: Path) -> object:
     raise ParseError(f"Unsupported suffix: {suffix}")
 
 
+def _report_debug_failures(dst_dir: Path) -> None:
+    """In debug mode: count [TRANSLATION FAILED] placeholders and report to stdout."""
+    dst_jsons = list(dst_dir.glob("*.json"))
+    if not dst_jsons:
+        return
+    try:
+        from book_translator.models.document import BookDocument
+
+        result_doc = BookDocument.from_json(dst_jsons[0].read_text(encoding="utf-8"))
+        fail_count = sum(
+            1 for ch in result_doc.chapters for p in ch.paragraphs if p.translation == "[TRANSLATION FAILED]"
+        )
+        total_translated = sum(1 for ch in result_doc.chapters for p in ch.paragraphs if p.translation is not None)
+        if fail_count > 0:
+            typer.echo(
+                f"[DEBUG] Translation failures: {fail_count}/{total_translated} paragraph(s) have [TRANSLATION FAILED]",
+            )
+        else:
+            typer.echo(f"[DEBUG] Translation OK: all {total_translated} paragraph(s) translated")
+    except Exception as exc:  # noqa: BLE001
+        typer.echo(f"[DEBUG] Could not count translation failures: {exc}", err=True)
+
+
 @app.command(name="translate")
 def translate_cmd(
     input_file: Path = typer.Argument(..., help="Input file (.epub, .txt, .md, .markdown)"),
@@ -88,13 +111,17 @@ def translate_cmd(
     base_url: str | None = typer.Option(None, "--base-url", help="Custom OpenAI base URL", envvar="OPENAI_BASE_URL"),
     output: Path | None = typer.Option(None, "--output", "-o", help="Output EPUB path (default: cwd/<stem>.<target_lang>.epub)"),
     context_window: int = typer.Option(3, "--context-window", help="Translation context window size"),
-    concurrency: int = typer.Option(5, "--concurrency", help="Concurrent translation requests"),
+    concurrency: int = typer.Option(8, "--concurrency", help="Concurrent translation requests"),
     max_retries: int = typer.Option(5, "--max-retries", help="Max retries per paragraph"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show step-level logs"),
+    debug: bool = typer.Option(False, "--debug", help="Enable debug mode: DEBUG logging + detailed diagnostics (implies --verbose)"),  # noqa: E501
 ) -> None:
     """Translate a book file into a bilingual EPUB."""
     # Step 1 — Configure logging (D-06)
-    if verbose:
+    if debug:
+        logging.basicConfig(level=logging.DEBUG, format="%(levelname)s %(name)s: %(message)s")
+        verbose = True  # debug implies verbose
+    elif verbose:
         logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     else:
         logging.basicConfig(level=logging.WARNING)
@@ -143,6 +170,13 @@ def translate_cmd(
     run_dir = store.run_dir(run_id)
     if verbose:
         typer.echo(f"Run: {run_id}  path: {run_dir}")
+    if debug:
+        typer.echo(f"[DEBUG] model={model}")
+        if resolved_base_url:
+            typer.echo(f"[DEBUG] base_url={resolved_base_url}")
+        typer.echo(f"[DEBUG] job_dir={run_dir}")
+        typer.echo(f"[DEBUG] source={input_file.resolve()}")
+        typer.echo(f"[DEBUG] destination={output_dest}")
 
     # Step 6 — Execute pipeline with error handling (D-13, D-14, D-15)
     try:
@@ -186,6 +220,8 @@ def translate_cmd(
         )
         if verbose:
             typer.echo("Translation complete.")
+        if debug:
+            _report_debug_failures(store.dst_dir(run_id))
 
         # Step 6d — Assemble EPUB
         if verbose:

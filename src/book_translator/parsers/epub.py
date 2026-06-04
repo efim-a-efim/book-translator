@@ -75,8 +75,8 @@ def _walk(node, chapter_id: str, acc: list[Paragraph], counter: list[int]) -> No
             _walk(child, chapter_id, acc, counter)
 
 
-def _extract_blocks(html: str, chapter_id: str) -> list[Paragraph]:
-    soup = BeautifulSoup(html, "lxml")
+def _extract_blocks(html: str, chapter_id: str, parser: str = "lxml-xml") -> list[Paragraph]:
+    soup = BeautifulSoup(html, parser)
     root = soup.find("body") or soup
     paragraphs: list[Paragraph] = []
     counter = [0]

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import textwrap
 
 from book_translator.translator.chunker import BatchContext, TranslationBatch
 
@@ -33,13 +34,16 @@ TRANSLATION_RESPONSE_FORMAT = {
 
 
 def build_system_prompt(source_lang: str, target_lang: str) -> str:
-    return (
-        f"You are a professional literary translator. "
-        f"Your task is to translate text from {source_lang} to {target_lang}. "
-        f"Preserve the narrative voice, character names, and tone of the original. "
-        f"Return only structured JSON matching the provided response schema. "
-        f"No explanations, no commentary."
-    )
+    return textwrap.dedent(f"""
+        You are a professional literary translator.
+        Your task is to translate text from {source_lang} to {target_lang}.
+        Preserve the narrative voice, character names, and tone of the original.
+        Return ONLY structured JSON matching the provided response schema below.
+        No explanations, no commentary, no formatting - ONLY JSON!!!
+        <json_schema>
+        {TRANSLATION_RESPONSE_FORMAT}
+        </json_schema>
+    """).strip()
 
 
 def _context_payload(entry: BatchContext) -> dict[str, str | None]:
