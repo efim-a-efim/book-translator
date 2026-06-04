@@ -28,9 +28,10 @@ app = typer.Typer(add_completion=False, help="AI-powered bilingual book translat
 
 
 def _resolve_api_key(flag_value: str | None) -> str:
-    if flag_value:
+    """Resolve API key with priority: CLI flag > BOOK_TRANSLATOR_API_KEY > OPENAI_API_KEY."""
+    if flag_value is not None:
         return flag_value
-    return os.environ.get("OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY") or ""
+    return os.environ.get("BOOK_TRANSLATOR_API_KEY") or os.environ.get("OPENAI_API_KEY") or ""
 
 
 def _resolve_base_url(flag_value: str | None) -> str | None:
@@ -83,7 +84,7 @@ def translate_cmd(
     source_lang: str = typer.Option(..., "--source-lang", "-s", help="Source language code (e.g. en)"),
     target_lang: str = typer.Option(..., "--target-lang", "-t", help="Target language code (e.g. ru)"),
     model: str = typer.Option("gpt-5.4-mini", "--model", "-m", help="OpenAI model name"),
-    api_key: str | None = typer.Option(None, "--api-key", help="OpenAI API key", envvar="OPENAI_API_KEY"),
+    api_key: str | None = typer.Option(None, "--api-key", help="OpenAI API key (overrides BOOK_TRANSLATOR_API_KEY / OPENAI_API_KEY)"),  # noqa: E501
     base_url: str | None = typer.Option(None, "--base-url", help="Custom OpenAI base URL", envvar="OPENAI_BASE_URL"),
     output: Path | None = typer.Option(None, "--output", "-o", help="Output EPUB path (default: cwd/<stem>.<target_lang>.epub)"),
     context_window: int = typer.Option(3, "--context-window", help="Translation context window size"),
@@ -160,8 +161,15 @@ def translate_cmd(
             typer.echo(f"Parsed {para_count} paragraphs")
 
         # Step 6c — Translate (async)
+        progress_callback = None
         if verbose:
             typer.echo(f"Translating {source_lang} → {target_lang} using {model} ...")
+
+            def _progress_callback(done: int, total: int) -> None:
+                typer.echo(f"Progress: {done}/{total} paragraphs translated")
+
+            progress_callback = _progress_callback
+
         asyncio.run(
             translate(
                 job_dir=run_dir,
@@ -173,6 +181,7 @@ def translate_cmd(
                 context_window=context_window,
                 concurrency=concurrency,
                 max_retries=max_retries,
+                progress_callback=progress_callback,
             )
         )
         if verbose:
@@ -206,7 +215,7 @@ def translate_cmd(
         hint = ""
         exc_str = str(exc)
         if "auth" in exc_str.lower() or "401" in exc_str or "403" in exc_str:
-            hint = " Hint: check --api-key or OPENAI_API_KEY."
+            hint = " Hint: check --api-key, BOOK_TRANSLATOR_API_KEY, or OPENAI_API_KEY."
         typer.echo(f"Error: translation failed — {exc}{hint}", err=True)
         typer.echo(f"Run retained: {run_id}  path: {run_dir}", err=True)
         raise typer.Exit(code=1)
@@ -215,7 +224,7 @@ def translate_cmd(
         typer.echo(f"Error: {exc}", err=True)
         typer.echo(f"Run retained: {run_id}  path: {run_dir}", err=True)
         if not resolved_api_key:
-            typer.echo("Hint: no API key found. Set --api-key or OPENAI_API_KEY.", err=True)
+            typer.echo("Hint: no API key found. Set --api-key, BOOK_TRANSLATOR_API_KEY, or OPENAI_API_KEY.", err=True)
         raise typer.Exit(code=1)
 
 

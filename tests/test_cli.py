@@ -81,24 +81,26 @@ def test_supported_suffixes_constant():
 
 
 def test_resolve_api_key_flag_takes_priority(monkeypatch):
-    monkeypatch.setenv("OPENAI_API_KEY", "env-key")
+    """CLI flag wins over both env vars."""
+    monkeypatch.setenv("BOOK_TRANSLATOR_API_KEY", "bt-key")
     monkeypatch.setenv("OPENAI_API_KEY", "openai-key")
     from book_translator.cli import _resolve_api_key
 
     assert _resolve_api_key("flag-key") == "flag-key"
 
 
-def test_resolve_api_key_book_translator_env(monkeypatch):
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+def test_resolve_api_key_book_translator_env_wins_over_openai(monkeypatch):
+    """BOOK_TRANSLATOR_API_KEY beats OPENAI_API_KEY when no flag."""
+    monkeypatch.setenv("BOOK_TRANSLATOR_API_KEY", "bt-key")
     monkeypatch.setenv("OPENAI_API_KEY", "openai-key")
-    monkeypatch.setenv("OPENAI_API_KEY", "bt-key")
     from book_translator.cli import _resolve_api_key
 
     assert _resolve_api_key(None) == "bt-key"
 
 
 def test_resolve_api_key_falls_back_to_openai(monkeypatch):
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    """Falls back to OPENAI_API_KEY when BOOK_TRANSLATOR_API_KEY absent."""
+    monkeypatch.delenv("BOOK_TRANSLATOR_API_KEY", raising=False)
     monkeypatch.setenv("OPENAI_API_KEY", "openai-key")
     from book_translator.cli import _resolve_api_key
 
@@ -106,11 +108,56 @@ def test_resolve_api_key_falls_back_to_openai(monkeypatch):
 
 
 def test_resolve_api_key_empty_string_when_absent(monkeypatch):
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    """Returns empty string when neither env var is set and no flag."""
+    monkeypatch.delenv("BOOK_TRANSLATOR_API_KEY", raising=False)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     from book_translator.cli import _resolve_api_key
 
     assert _resolve_api_key(None) == ""
+
+
+def test_resolve_api_key_explicit_empty_string_from_flag(monkeypatch):
+    """Empty string passed via flag wins (is not None) — falls through to env would be surprising."""
+    monkeypatch.setenv("BOOK_TRANSLATOR_API_KEY", "bt-key")
+    monkeypatch.setenv("OPENAI_API_KEY", "openai-key")
+    from book_translator.cli import _resolve_api_key
+
+    assert _resolve_api_key("") == ""
+
+
+def test_resolve_api_key_typer_does_not_bypass_book_translator_env(monkeypatch, runner, tmp_store, sample_txt):
+    """BOOK_TRANSLATOR_API_KEY takes precedence even when OPENAI_API_KEY is set (Typer envvar removed)."""
+    monkeypatch.setenv("BOOK_TRANSLATOR_API_KEY", "bt-env-key")
+    monkeypatch.setenv("OPENAI_API_KEY", "openai-env-key")
+    captured = {}
+
+    async def _fake_translate(**kwargs):
+        captured["api_key"] = kwargs.get("api_key")
+
+    mock_doc = MagicMock()
+    mock_doc.to_json.return_value = '{"title":"T","author":"A","source_lang":"en","chapters":[]}'
+    mock_doc.chapters = []
+
+    with (
+        patch("book_translator.cli._parse_file", return_value=mock_doc),
+        patch("book_translator.cli.translate", side_effect=_fake_translate),
+        patch("book_translator.cli.assemble") as mock_assemble,
+    ):
+
+        def _fake_assemble(job_dir, target_lang):
+            epub = job_dir / "dst" / f"out.{target_lang}.epub"
+            epub.parent.mkdir(parents=True, exist_ok=True)
+            epub.write_bytes(b"x")
+            return epub
+
+        mock_assemble.side_effect = _fake_assemble
+        result = runner.invoke(
+            app,
+            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru"],
+        )
+
+    assert result.exit_code == 0, result.output
+    assert captured.get("api_key") == "bt-env-key"
 
 
 def test_resolve_base_url_none_when_absent(monkeypatch):
@@ -201,6 +248,90 @@ def test_translate_success_output_path(runner, tmp_store, sample_txt, tmp_path):
     assert result.exit_code == 0, result.output
     assert out.exists()
     assert out.read_bytes() == b"fake-epub"
+
+
+def test_translate_verbose_prints_progress(runner, tmp_store, sample_txt):
+    async def _fake_translate(**kwargs):
+        kwargs["progress_callback"](1, 2)
+        kwargs["progress_callback"](2, 2)
+
+    mock_doc = MagicMock()
+    mock_doc.to_json.return_value = '{"title":"T","author":"A","source_lang":"en","chapters":[]}'
+    mock_doc.chapters = []
+
+    with (
+        patch("book_translator.cli._parse_file", return_value=mock_doc),
+        patch("book_translator.cli.translate", side_effect=_fake_translate),
+        patch("book_translator.cli.assemble") as mock_assemble,
+    ):
+
+        def _fake_assemble(job_dir, target_lang):
+            epub = job_dir / "dst" / f"sample.{target_lang}.epub"
+            epub.parent.mkdir(parents=True, exist_ok=True)
+            epub.write_bytes(b"fake-epub")
+            return epub
+
+        mock_assemble.side_effect = _fake_assemble
+        result = runner.invoke(
+            app,
+            [
+                "translate",
+                str(sample_txt),
+                "--source-lang",
+                "en",
+                "--target-lang",
+                "ru",
+                "--api-key",
+                "test-key",
+                "--verbose",
+            ],
+        )
+
+    assert result.exit_code == 0, result.output
+    assert "Progress: 1/2 paragraphs translated" in result.output
+    assert "Progress: 2/2 paragraphs translated" in result.output
+
+
+def test_translate_non_verbose_does_not_print_progress(runner, tmp_store, sample_txt):
+    captured = {}
+
+    async def _fake_translate(**kwargs):
+        captured["progress_callback"] = kwargs.get("progress_callback")
+
+    mock_doc = MagicMock()
+    mock_doc.to_json.return_value = '{"title":"T","author":"A","source_lang":"en","chapters":[]}'
+    mock_doc.chapters = []
+
+    with (
+        patch("book_translator.cli._parse_file", return_value=mock_doc),
+        patch("book_translator.cli.translate", side_effect=_fake_translate),
+        patch("book_translator.cli.assemble") as mock_assemble,
+    ):
+
+        def _fake_assemble(job_dir, target_lang):
+            epub = job_dir / "dst" / f"sample.{target_lang}.epub"
+            epub.parent.mkdir(parents=True, exist_ok=True)
+            epub.write_bytes(b"fake-epub")
+            return epub
+
+        mock_assemble.side_effect = _fake_assemble
+        result = runner.invoke(
+            app,
+            [
+                "translate",
+                str(sample_txt),
+                "--source-lang",
+                "en",
+                "--target-lang",
+                "ru",
+                "--api-key",
+                "test-key",
+            ],
+        )
+
+    assert result.exit_code == 0, result.output
+    assert captured["progress_callback"] is None
+    assert "Progress:" not in result.output
 
 
 def test_translate_parse_error_retains_run(runner, tmp_store, sample_txt):
@@ -382,3 +513,47 @@ def test_cleanup_mixed_states(runner, tmp_store):
     # Only failed run deleted; running + unknown remain
     assert len(list(tmp_store.iterdir())) == 2
     assert "Removed 1" in result.output
+
+
+# --- Integration: --api-key flag wins over both env vars all the way to translate() ---
+
+
+def test_api_key_flag_wins_over_both_envs_to_translate(monkeypatch, runner, tmp_store, sample_txt):
+    """--api-key CLI flag takes priority over BOOK_TRANSLATOR_API_KEY and OPENAI_API_KEY."""
+    monkeypatch.setenv("BOOK_TRANSLATOR_API_KEY", "bt-env-key")
+    monkeypatch.setenv("OPENAI_API_KEY", "openai-env-key")
+    captured = {}
+
+    async def _fake_translate(**kwargs):
+        captured["api_key"] = kwargs.get("api_key")
+
+    mock_doc = MagicMock()
+    mock_doc.to_json.return_value = '{"title":"T","author":"A","source_lang":"en","chapters":[]}'
+    mock_doc.chapters = []
+
+    with (
+        patch("book_translator.cli._parse_file", return_value=mock_doc),
+        patch("book_translator.cli.translate", side_effect=_fake_translate),
+        patch("book_translator.cli.assemble") as mock_assemble,
+    ):
+
+        def _fake_assemble(job_dir, target_lang):
+            epub = job_dir / "dst" / f"out.{target_lang}.epub"
+            epub.parent.mkdir(parents=True, exist_ok=True)
+            epub.write_bytes(b"x")
+            return epub
+
+        mock_assemble.side_effect = _fake_assemble
+        result = runner.invoke(
+            app,
+            [
+                "translate",
+                str(sample_txt),
+                "--source-lang", "en",
+                "--target-lang", "ru",
+                "--api-key", "flag-key",
+            ],
+        )
+
+    assert result.exit_code == 0, result.output
+    assert captured.get("api_key") == "flag-key"
