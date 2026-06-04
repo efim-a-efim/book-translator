@@ -357,6 +357,36 @@ async def test_translate_skips_empty_text_paragraphs(tmp_path: Path) -> None:
     assert paras_out[2].translation == "Translated"
 
 
+async def test_translate_progress_callback_counts_only_translatable_paragraphs(tmp_path: Path) -> None:
+    paras = [
+        Paragraph(id="ch0:0", text="Text A", raw_html="<p>Text A</p>", kind="paragraph"),
+        Paragraph(id="ch0:1", text="", raw_html="<img/>", kind="image"),
+        Paragraph(id="ch0:2", text="   ", raw_html="<p> </p>", kind="paragraph"),
+        Paragraph(id="ch0:3", text="Text B", raw_html="<p>Text B</p>", kind="paragraph"),
+        Paragraph(id="ch0:4", text="", raw_html="<table/>", kind="table"),
+    ]
+    doc = BookDocument(title="T", chapters=[Chapter(id="ch0", paragraphs=paras)])
+    _write_fixture_doc(tmp_path, doc, "book.ru.json")
+    progress: list[tuple[int, int]] = []
+
+    mock_client = _make_mock_client("T")
+    with patch(
+        "book_translator.translator.engine.create_client",
+        _patch_create_client(mock_client),
+    ):
+        await translate(
+            tmp_path,
+            "gpt-4o",
+            "test-key",
+            None,
+            "Russian",
+            "en",
+            progress_callback=lambda done, total: progress.append((done, total)),
+        )
+
+    assert progress == [(1, 2), (2, 2)]
+
+
 async def test_translate_exhausted_retries_sets_failed_placeholder(tmp_path: Path) -> None:
     doc = _make_doc(["Target"])
     _write_fixture_doc(tmp_path, doc, "book.ru.json")

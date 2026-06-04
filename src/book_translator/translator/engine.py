@@ -4,6 +4,7 @@ import asyncio
 import logging
 import os
 from pathlib import Path
+from typing import Callable
 
 from openai import APIConnectionError, APIStatusError, AsyncOpenAI, RateLimitError
 from tenacity import (
@@ -92,6 +93,10 @@ def _write_translated(doc: BookDocument, dst: Path) -> None:
     os.replace(tmp, dst)
 
 
+def _is_translatable(para: Paragraph) -> bool:
+    return para.kind not in ("image", "table") and bool(para.text and para.text.strip())
+
+
 async def translate(
     job_dir: Path,
     model: str,
@@ -102,16 +107,20 @@ async def translate(
     context_window: int = 3,
     concurrency: int = 5,
     max_retries: int = 5,
+    progress_callback: Callable[[int, int], None] | None = None,
 ) -> None:
     src_file = _find_source_json(job_dir)
     doc = BookDocument.from_json(src_file.read_text(encoding="utf-8"))
     flat = [p for ch in doc.chapters for p in ch.paragraphs]
+    total_translatable = sum(1 for p in flat if _is_translatable(p))
+    completed_translatable = 0
     semaphore = asyncio.Semaphore(concurrency)
 
     async with create_client(api_key, base_url) as client:
 
         async def translate_one(idx: int, para: Paragraph) -> None:
-            if para.kind in ("image", "table") or not para.text:
+            nonlocal completed_translatable
+            if not _is_translatable(para):
                 return
             before, after = build_context_window(flat, idx, context_window)
             sys_prompt = build_system_prompt(source_lang, target_lang)
@@ -125,6 +134,9 @@ async def translate(
             except Exception as exc:
                 logger.warning("Paragraph %s failed (non-retryable): %s", para.id, exc)
                 para.translation = "[TRANSLATION FAILED]"
+            completed_translatable += 1
+            if progress_callback is not None:
+                progress_callback(completed_translatable, total_translatable)
 
         tasks = [translate_one(i, p) for i, p in enumerate(flat)]
         await asyncio.gather(*tasks)
