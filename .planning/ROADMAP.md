@@ -53,7 +53,10 @@ See: `.planning/milestones/v2/`
   3. The first `<details>` per chapter has `open="open"` — one translation is visible on chapter load
   4. Heading elements render as `<h2>` with an always-visible inline span, never wrapped in `<details>`
   5. Images and tables appear in output unchanged; readers without `<details>` see both texts permanently
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 11-01-PLAN.md — Fix DOCTYPE + implement build_interactive_html in html_gen.py
+- [ ] 11-02-PLAN.md — Add _make_css_item, CSS plumbing in all builders, build_interactive method
 
 ### Phase 12: CSS + CLI Integration
 **Goal**: Users can run `translate --mode interactive` and receive a fully styled EPUB with disclosure-triangle-free CSS, with all cross-flag validation enforced
@@ -84,5 +87,5 @@ See: `.planning/milestones/v2/`
 | 10. Backwards Compatibility | v2 | 1/1 | ✓ Complete | 2026-06-04 |
 | 10.1. Fix SENT-06 | v2 | 1/1 | ✓ Complete | 2026-06-11 |
 | 10.2. Fix MONO-02 + MONO-04 | v2 | 1/1 | ✓ Complete | 2026-06-11 |
-| 11. HTML Generation Engine | v3 | 0/? | Not started | - |
+| 11. HTML Generation Engine | v3 | 0/2 | Not started | - |
 | 12. CSS + CLI Integration | v3 | 0/? | Not started | - |
