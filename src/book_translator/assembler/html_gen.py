@@ -88,13 +88,16 @@ def build_pair_html(para: Paragraph) -> str:
     
     # Per-sentence mode: render each sentence pair
     if para.sentence_translations is not None:
-        # Split original text into sentences for pairing
-        sentences = _split_sentences_for_rendering(para.text)
+        # Use sentence_chunk_texts when available (primary path); fall back to regex splitting for old data
+        if para.sentence_chunk_texts is not None:
+            source_texts = para.sentence_chunk_texts
+        else:
+            source_texts = _split_sentences_for_rendering(para.text)
         pairs = []
-        for i, sentence in enumerate(sentences):
-            trans = para.sentence_translations[i] if i < len(para.sentence_translations) else "[TRANSLATION FAILED]"
-            pairs.append(f'<p class="bt-orig">{sentence}</p>')
-            pairs.append(f'<p class="bt-trans">{trans}</p>')
+        pair_count = min(len(source_texts), len(para.sentence_translations))
+        for i in range(pair_count):
+            pairs.append(f'<p class="bt-orig">{source_texts[i]}</p>')
+            pairs.append(f'<p class="bt-trans">{para.sentence_translations[i]}</p>')
         return f'<div class="bt-pair">\n' + '\n'.join(pairs) + f'\n</div>'
     
     trans_text = para.translation or ""

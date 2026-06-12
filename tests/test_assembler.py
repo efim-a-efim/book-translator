@@ -251,7 +251,7 @@ def test_build_pair_html_sentence_translations():
 
 
 def test_build_pair_html_sentence_translations_partial():
-    """Per-sentence mode handles missing translations gracefully."""
+    """Per-sentence mode with more regex-split sentences than translations renders only min() pairs."""
     para = Paragraph(
         id="p1",
         text="Hello world. How are you?",
@@ -262,7 +262,67 @@ def test_build_pair_html_sentence_translations_partial():
     )
     result = build_pair_html(para)
     assert "Привет мир." in result
-    assert "[TRANSLATION FAILED]" in result
+    # New min() rule: extras dropped silently, no [TRANSLATION FAILED]
+    assert "[TRANSLATION FAILED]" not in result
+
+
+# --- SENT-06: chunk_texts path, fallback, and mismatch tests ---
+
+
+def test_build_pair_html_sentence_mode_uses_chunk_texts():
+    """build_pair_html uses sentence_chunk_texts as originals when set."""
+    para = Paragraph(
+        id="p1",
+        text="Hello world. Goodbye.",
+        raw_html="<p>Hello world. Goodbye.</p>",
+        translation=None,
+        sentence_translations=["Привет мир.", "До свидания."],
+        sentence_chunk_texts=["Hello world.", "Goodbye."],
+        kind="paragraph",
+    )
+    result = build_pair_html(para)
+    assert 'class="bt-pair"' in result
+    assert "Hello world." in result
+    assert "Goodbye." in result
+    assert "Привет мир." in result
+    assert "До свидания." in result
+    assert 'class="bt-orig"' in result
+    assert 'class="bt-trans"' in result
+
+
+def test_build_pair_html_sentence_mode_fallback_no_chunk_texts():
+    """build_pair_html falls back to regex splitting when sentence_chunk_texts is None."""
+    para = Paragraph(
+        id="p1",
+        text="One sentence.",
+        raw_html="<p>One sentence.</p>",
+        translation=None,
+        sentence_translations=["T1"],
+        sentence_chunk_texts=None,
+        kind="paragraph",
+    )
+    result = build_pair_html(para)
+    assert 'class="bt-pair"' in result
+    assert "T1" in result
+
+
+def test_build_pair_html_sentence_mode_mismatch_renders_min():
+    """Length mismatch renders min(len(chunk_texts), len(translations)) pairs; extras silently dropped."""
+    para = Paragraph(
+        id="p1",
+        text="A. B. C.",
+        raw_html="<p>A. B. C.</p>",
+        translation=None,
+        sentence_translations=["TA", "TB"],
+        sentence_chunk_texts=["A.", "B.", "C."],
+        kind="paragraph",
+    )
+    result = build_pair_html(para)
+    assert "A." in result
+    assert "TA" in result
+    assert "B." in result
+    assert "TB" in result
+    assert "C." not in result
 
 
 # --- Monolingual mode tests (MONO-04) ---
