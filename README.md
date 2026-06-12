@@ -75,7 +75,7 @@ book-translator translate <FILE> [OPTIONS]
 |--------|-------|---------|-------------|
 | `--source-lang TEXT` | `-s` | *(required)* | Source language code (e.g. `en`, `fr`, `de`) |
 | `--target-lang TEXT` | `-t` | *(required)* | Target language code (e.g. `ru`, `zh`, `es`) |
-| `--model TEXT` | `-m` | `gpt-5.4-mini` | OpenAI model name |
+| `--model TEXT` | `-m` | `openai/gpt-5.4-mini` | OpenAI model name |
 | `--api-key TEXT` | | `$OPENAI_API_KEY` | API key |
 | `--base-url TEXT` | | `$OPENAI_BASE_URL` | Custom API base URL |
 | `--output PATH` | `-o` | `<cwd>/<stem>.<target>.epub` | Output EPUB path |
