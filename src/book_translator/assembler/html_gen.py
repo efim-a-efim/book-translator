@@ -135,7 +135,7 @@ def build_interactive_html(
 
     if para.kind == "heading":
         escaped_text = _html.escape(para.text)
-        trans = para.translation or ""
+        trans = _html.escape(para.translation or "")
         span = (
             f'<span class="bt-heading-translation"'
             f' xml:lang="{target_lang}" lang="{target_lang}">'
@@ -145,7 +145,7 @@ def build_interactive_html(
 
     # paragraph / caption / footnote  (INTR-06, INTR-08)
     prefixed_orig = _prefix_ids(para.raw_html)       # INTR-18: BS4 before <details>
-    trans = para.translation or ""
+    trans = _html.escape(para.translation or "")
     open_attr = ' open="open"' if is_first else ""   # INTR-07: XML attribute form
     return (
         f'<details class="bt-interactive"{open_attr}>'
