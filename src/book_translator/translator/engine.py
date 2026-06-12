@@ -294,13 +294,16 @@ async def translate_sentence(
             
             for chunk in batch_items:
                 translation = translations.get(chunk.id, "[TRANSLATION FAILED]")
-                # Store sentence translations in the paragraph
+                # Store sentence translations and chunk texts in the paragraph
                 for chapter in doc.chapters:
                     for para in chapter.paragraphs:
                         if para.id == chunk.paragraph_id:
                             if para.sentence_translations is None:
                                 para.sentence_translations = []
                             para.sentence_translations.append(translation)
+                            if para.sentence_chunk_texts is None:
+                                para.sentence_chunk_texts = []
+                            para.sentence_chunk_texts.append(chunk.text)
                             break
                 completed_chunks += 1
                 if progress_callback is not None:

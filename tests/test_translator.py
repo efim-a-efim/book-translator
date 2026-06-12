@@ -736,5 +736,75 @@ def test_sentence_batch_separates_by_chapter() -> None:
     )
     doc = BookDocument(title="T", chapters=[ch0, ch1])
     batches = build_sentence_batches(doc, "en", token_budget=1000)
-    
+
     assert len(batches) == 2
+
+
+# === SENT-06: sentence_chunk_texts tests ===
+
+
+def test_paragraph_chunk_texts_round_trip() -> None:
+    """Paragraph with sentence_chunk_texts serializes/deserializes via BookDocument.to_json/from_json."""
+    para = Paragraph(
+        id="p1",
+        text="Hello. World.",
+        raw_html="<p>Hello. World.</p>",
+        sentence_chunk_texts=["Hello.", "World."],
+        kind="paragraph",
+    )
+    chapter = Chapter(id="ch0", paragraphs=[para])
+    doc = BookDocument(title="T", chapters=[chapter])
+    restored = BookDocument.from_json(doc.to_json())
+    assert restored.chapters[0].paragraphs[0].sentence_chunk_texts == ["Hello.", "World."]
+
+
+def test_paragraph_chunk_texts_default_none() -> None:
+    """sentence_chunk_texts defaults to None when not set."""
+    para = Paragraph(id="p1", text="Hello.", raw_html="<p>Hello.</p>", kind="paragraph")
+    assert para.sentence_chunk_texts is None
+
+
+async def test_translate_sentence_populates_chunk_texts(tmp_path: Path) -> None:
+    """translate_sentence() populates sentence_chunk_texts in parallel with sentence_translations."""
+    from contextlib import asynccontextmanager
+    from unittest.mock import patch
+
+    from book_translator.translator.engine import translate_sentence
+
+    # Build a doc with one paragraph of two sentences
+    para = Paragraph(
+        id="ch0:0",
+        text="First sentence. Second sentence.",
+        raw_html="<p>First sentence. Second sentence.</p>",
+        kind="paragraph",
+    )
+    doc = BookDocument(title="T", chapters=[Chapter(id="ch0", paragraphs=[para])])
+    _write_fixture_doc(tmp_path, doc, "book.ru.json")
+
+    # Discover chunk IDs produced by the chunker
+    from book_translator.translator.chunker import build_sentence_chunks
+    chunks = build_sentence_chunks(doc, "Russian")
+    chunk_ids = {c.id: c.text for c in chunks}
+
+    mock_payload = {
+        "translations": [{"id": cid, "text": f"Trans({ctext})"} for cid, ctext in chunk_ids.items()]
+    }
+    import json as _json
+    mock_client = _make_mock_client(_json.dumps(mock_payload))
+
+    @asynccontextmanager
+    async def _patched_client(*args, **kwargs):
+        yield mock_client
+
+    with patch("book_translator.translator.engine.create_client", _patched_client):
+        await translate_sentence(tmp_path, "gpt-4o", "test-key", None, "Russian", "en")
+
+    result_doc = BookDocument.from_json((tmp_path / "dst" / "book.en.json").read_text(encoding="utf-8"))
+    result_para = result_doc.chapters[0].paragraphs[0]
+
+    assert result_para.sentence_chunk_texts is not None
+    assert result_para.sentence_translations is not None
+    assert len(result_para.sentence_chunk_texts) == len(result_para.sentence_translations)
+    for chunk_text in result_para.sentence_chunk_texts:
+        assert isinstance(chunk_text, str)
+        assert len(chunk_text) > 0
