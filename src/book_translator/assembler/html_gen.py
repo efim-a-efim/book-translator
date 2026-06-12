@@ -53,17 +53,19 @@ def _prefix_ids(html: str, prefix: str = _ID_PREFIX) -> str:
     if body is None:
         return html
 
-    # collect all elements with an id
+    # collect all elements with an id, tracking renamed ids
+    renamed: dict[str, str] = {}
     for el in body.find_all(id=True):
         old_id = el["id"]
         new_id = prefix + old_id
         el["id"] = new_id
+        renamed[old_id] = new_id
 
-    # fix internal href="#id" anchors
+    # fix only internal href="#id" anchors whose target was renamed in this pass
     for el in body.find_all(href=re.compile(r"^#")):
-        old_href = el["href"]
-        old_id = old_href[1:]
-        el["href"] = "#" + prefix + old_id
+        target = el["href"][1:]
+        if target in renamed:
+            el["href"] = "#" + renamed[target]
 
     # return the inner content (not the wrapping html/body tags)
     parts = [str(c) for c in body.children]
