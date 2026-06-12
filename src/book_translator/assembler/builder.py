@@ -15,6 +15,38 @@ from book_translator.assembler.splitter import split_chapter_parts
 from book_translator.models.document import BookDocument, Chapter
 
 
+_INTERACTIVE_CSS = """\
+details.bt-interactive {
+}
+summary.bt-original {
+    list-style: none;
+    cursor: pointer;
+}
+summary.bt-original::-webkit-details-marker {
+    display: none;
+}
+summary.bt-original::marker {
+    display: none;
+}
+summary.bt-original::before {
+    content: "\\25B6";
+    margin-right: 0.3em;
+}
+details[open].bt-interactive > summary.bt-original::before {
+    content: "\\25BC";
+}
+.bt-translation {
+    margin-bottom: 0.4em;
+}
+span.bt-heading-translation {
+    display: block;
+    font-size: 0.6em;
+    opacity: 0.5;
+    font-style: italic;
+}
+"""
+
+
 def _make_css_item(content: bytes = b"") -> epub.EpubItem:
     """Create a stub CSS EpubItem for inclusion in EPUB manifests."""
     return epub.EpubItem(
@@ -225,7 +257,7 @@ class EpubBuilder:
         book.add_item(epub.EpubNcx())
         book.add_item(epub.EpubNav())
 
-        css_item = _make_css_item()
+        css_item = _make_css_item(content=_INTERACTIVE_CSS.encode("utf-8"))
         book.add_item(css_item)
 
         all_chapter_items: list[epub.EpubHtml] = []
