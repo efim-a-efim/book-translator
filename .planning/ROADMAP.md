@@ -119,4 +119,4 @@ Plans:
 
 Plans:
 
-- [ ] 10.2-01-PLAN.md — Fix MONO-04 (builder.py elif order) + Fix MONO-02 (cli.py extension derivation) + full suite green
+- [x] 10.2-01-PLAN.md — Fix MONO-04 (builder.py elif order) + Fix MONO-02 (cli.py extension derivation) + full suite green
