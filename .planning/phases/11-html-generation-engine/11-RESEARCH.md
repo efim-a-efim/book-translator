@@ -402,16 +402,16 @@ def _make_css_item(content: bytes = b"") -> epub.EpubItem:
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Does `wrap_chapter_xhtml` need a signature change?**
    - What we know: it currently accepts `pairs: Sequence[str]` — `build_interactive()` will pass a list of HTML strings just like `build()` does
    - What's unclear: nothing — the function is reused unchanged
-   - Recommendation: reuse as-is; no change needed
+   - RESOLVED: reuse as-is; no change needed
 
 2. **Should `_make_css_item` be in `html_gen.py` or `builder.py`?**
    - What we know: it creates an `epub.EpubItem` which is a builder concern; `html_gen.py` has no ebooklib imports
-   - Recommendation: put in `builder.py` as a module-level private function (avoids adding ebooklib import to `html_gen.py`)
+   - RESOLVED: put in `builder.py` as a module-level private function (avoids adding ebooklib import to `html_gen.py`)
 
 ---
 

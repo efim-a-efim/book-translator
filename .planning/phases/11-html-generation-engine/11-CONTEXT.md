@@ -38,7 +38,7 @@ Phase 12 (not this phase): CSS content (INTR-13–17), `--mode interactive` CLI 
 
 ### Pass-through and Fallback — INTR-11, INTR-12
 - **D-09:** `kind in {"image", "table"}` returns `para.raw_html` unchanged (same pattern as `build_pair_html`).
-- **D-10:** Graceful fallback for readers without `<details>` support: both original (in `<summary>`) and translation (in `<p>`) are visible permanently. No additional markup needed — this is native `<details>` behavior.
+- **D-10** [informational]: Graceful fallback for readers without `<details>` support: both original (in `<summary>`) and translation (in `<p>`) are visible permanently. No additional markup needed — this is native `<details>` behavior.
 
 ### Claude's Discretion
 - Exact CSS class names for interactive elements are specified in REQUIREMENTS.md (INTR-06–09): use as written.
