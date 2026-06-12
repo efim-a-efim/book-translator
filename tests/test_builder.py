@@ -99,51 +99,60 @@ class TestBuildInteractive:
         result = EpubBuilder().build_interactive(doc, "ru", book_id="test-id")
         assert isinstance(result, epub.EpubBook)
 
+    def _get_chapter_xhtml_items(self, book):
+        """Return chapter .xhtml items (excluding nav.xhtml which has empty content)."""
+        return [
+            i for i in book.get_items()
+            if hasattr(i, "file_name")
+            and i.file_name.endswith(".xhtml")
+            and i.file_name != "nav.xhtml"
+        ]
+
     def test_first_details_has_open_attr(self):
         doc = _make_doc()
         book = EpubBuilder().build_interactive(doc, "ru", book_id="test-id")
-        xhtml_items = [
-            i for i in book.get_items()
-            if hasattr(i, "file_name") and i.file_name.endswith(".xhtml")
-        ]
-        assert xhtml_items, "No .xhtml items found"
+        xhtml_items = self._get_chapter_xhtml_items(book)
+        assert xhtml_items, "No chapter .xhtml items found"
         content = xhtml_items[0].content.decode("utf-8")
         assert 'open="open"' in content
 
     def test_second_details_no_open_attr(self):
         doc = _make_doc()
         book = EpubBuilder().build_interactive(doc, "ru", book_id="test-id")
-        xhtml_items = [
-            i for i in book.get_items()
-            if hasattr(i, "file_name") and i.file_name.endswith(".xhtml")
-        ]
+        xhtml_items = self._get_chapter_xhtml_items(book)
         content = xhtml_items[0].content.decode("utf-8")
         # First open="open" appears once; second details element must not have it
         assert content.count('open="open"') == 1
 
-    def test_heading_para_match_produces_span(self):
+    def test_heading_para_match_produces_span_in_h1(self):
+        """When chapter.title matches a heading para, h1 gets bt-heading-translation span (D-01)."""
         doc = _make_doc(with_heading=True)
         book = EpubBuilder().build_interactive(doc, "ru", book_id="test-id")
-        xhtml_items = [
-            i for i in book.get_items()
-            if hasattr(i, "file_name") and i.file_name.endswith(".xhtml")
-        ]
+        xhtml_items = self._get_chapter_xhtml_items(book)
         content = xhtml_items[0].content.decode("utf-8")
-        assert 'bt-heading-translation' in content
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(content, "lxml")
+        h1 = soup.find("h1")
+        assert h1 is not None
+        span = h1.find("span", class_="bt-heading-translation")
+        assert span is not None, f"Expected bt-heading-translation span in h1, got: {h1}"
 
-    def test_no_heading_para_match_no_span(self):
-        # Chapter with heading para whose text does NOT match chapter.title
+    def test_no_heading_para_match_no_span_in_h1(self):
+        """When no heading para matches chapter.title, h1 has no span (D-02)."""
+        # heading para text "Different Title" does NOT match chapter title "Intro"
         para = _make_para("p0", "Different Title", "Другой заголовок", kind="heading")
         body_para = _make_para("p1", "Body.", "Тело.")
         chapter = Chapter(id="ch1", title="Intro", paragraphs=[para, body_para])
         doc = BookDocument(title="Book", author="A", chapters=[chapter])
         book = EpubBuilder().build_interactive(doc, "ru", book_id="test-id")
-        xhtml_items = [
-            i for i in book.get_items()
-            if hasattr(i, "file_name") and i.file_name.endswith(".xhtml")
-        ]
+        xhtml_items = self._get_chapter_xhtml_items(book)
         content = xhtml_items[0].content.decode("utf-8")
-        assert 'bt-heading-translation' not in content
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(content, "lxml")
+        h1 = soup.find("h1")
+        assert h1 is not None
+        span = h1.find("span", class_="bt-heading-translation")
+        assert span is None, f"Expected no bt-heading-translation span in h1, got: {h1}"
 
     def test_spine_contains_nav_and_chapters(self):
         doc = _make_doc()
