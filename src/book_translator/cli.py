@@ -9,7 +9,7 @@ from pathlib import Path
 
 import typer
 
-from book_translator.assembler import assemble, assemble_monolingual
+from book_translator.assembler import assemble, assemble_interactive, assemble_monolingual
 from book_translator.models.job import JobMeta
 from book_translator.parsers import ParseError
 from book_translator.store.job_store import (
@@ -25,9 +25,7 @@ from book_translator.translator.engine import translate_sentence
 
 SUPPORTED_SUFFIXES = {".epub", ".txt", ".md", ".markdown"}
 
-VALID_MODES = {"per-page", "per-sentence", "monolingual"}
-VALID_OUTPUT_FORMATS = {"epub", "txt", "md"}
-FORMAT_TO_EXT: dict[str, str] = {"epub": ".epub", "txt": ".txt", "md": ".md"}
+VALID_MODES = {"per-page", "per-sentence", "monolingual", "interactive"}
 
 app = typer.Typer(add_completion=False, help="AI-powered bilingual book translator.")
 
@@ -120,8 +118,7 @@ def translate_cmd(
     max_retries: int = typer.Option(5, "--max-retries", help="Max retries per paragraph"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show step-level logs"),
     debug: bool = typer.Option(False, "--debug", help="Enable debug mode: DEBUG logging + detailed diagnostics (implies --verbose)"),  # noqa: E501
-    mode: str | None = typer.Option(None, "--mode", help="Translation mode: per-page, per-sentence, or monolingual"),
-    output_format: str | None = typer.Option(None, "--output-format", help="Output format (epub, txt, md) - only for monolingual mode"),
+    mode: str | None = typer.Option(None, "--mode", help="Translation mode: per-page, per-sentence, monolingual, or interactive"),
     batch_token_budget: int | None = typer.Option(None, "--batch-token-budget", help="Token budget per batch - only for per-sentence mode"),
 ) -> None:
     """Translate a book file into bilingual or monolingual output."""
@@ -156,18 +153,6 @@ def translate_cmd(
         raise typer.Exit(code=2)
 
     # Step 2c — Mode-scoped flag validation (MODE-04, MODE-05)
-    if output_format is not None and effective_mode != "monolingual":
-        typer.echo(
-            f"Error: --output-format is only valid for monolingual mode",
-            err=True,
-        )
-        raise typer.Exit(code=2)
-    if output_format is not None and output_format not in VALID_OUTPUT_FORMATS:
-        typer.echo(
-            f"Error: invalid output format '{output_format}'. Valid formats: {', '.join(sorted(VALID_OUTPUT_FORMATS))}",
-            err=True,
-        )
-        raise typer.Exit(code=2)
     if batch_token_budget is not None and effective_mode != "per-sentence":
         typer.echo(
             f"Error: --batch-token-budget is only valid for per-sentence mode",
@@ -187,10 +172,7 @@ def translate_cmd(
     stem = input_file.stem
     if stem.endswith(f".{source_lang}"):
         stem = stem[: -(len(source_lang) + 1)]
-    if effective_mode == "monolingual":
-        _ext = FORMAT_TO_EXT.get(output_format or "epub", ".epub")
-    else:
-        _ext = ".epub"
+    _ext = ".epub"
     default_output = Path.cwd() / f"{stem}.{target_lang}{_ext}"
     output_dest = output if output is not None else default_output
 
@@ -291,8 +273,9 @@ def translate_cmd(
         if verbose:
             typer.echo("Assembling output ...")
         if effective_mode == "monolingual":
-            out_format = output_format or "epub"
-            out_path = assemble_monolingual(job_dir=run_dir, target_lang=target_lang, output_format=out_format)
+            out_path = assemble_monolingual(job_dir=run_dir, target_lang=target_lang)
+        elif effective_mode == "interactive":
+            out_path = assemble_interactive(job_dir=run_dir, target_lang=target_lang)
         else:
             out_path = assemble(job_dir=run_dir, target_lang=target_lang)
         if verbose:
