@@ -108,15 +108,15 @@ Plans:
 **Plans:** 1 plan
 Plans:
 
-- [ ] 10.1-01-PLAN.md — Add sentence_chunk_texts to Paragraph, populate in translate_sentence(), fix build_pair_html()
+- [x] 10.1-01-PLAN.md — Add sentence_chunk_texts to Paragraph, populate in translate_sentence(), fix build_pair_html()
 
 ### Phase 10.2: Fix MONO-02 + MONO-04: output extension and heading order (INSERTED)
 
-**Goal:** [Urgent work - to be planned]
+**Goal:** Fix two confirmed monolingual mode bugs: wrong output file extension (MONO-02) and heading-as-paragraph rendering in EPUB (MONO-04).
 **Requirements**: MONO-02, MONO-04
 **Depends on:** Phase 10
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 10.2 to break down)
+- [ ] 10.2-01-PLAN.md — Fix MONO-04 (builder.py elif order) + Fix MONO-02 (cli.py extension derivation) + full suite green
