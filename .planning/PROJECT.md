@@ -52,9 +52,13 @@ A reader opens the output EPUB in any EPUB app and can follow the story paragrap
 - ✓ Output format selection for monolingual mode: `--output-format {epub,txt,md}` — v2.0
 - ✓ Per-page mode behavior preserved bit-for-bit when --mode omitted — v2.0
 
+### Validated (v3)
+
+- ✓ Interactive parallel EPUB mode (`--mode interactive`) — CSS-only `<details>`/`<summary>` reveal-on-tap for translations, no JS — v3.0 (Phase 11–12)
+- ✓ `--output-format` removed entirely; all modes always produce EPUB — v3.0 (Phase 12)
+
 ### Active (v3)
 
-- [ ] Interactive parallel EPUB mode (`--mode interactive`) — CSS-only `<details>`/`<summary>` reveal-on-tap for translations, no JS — v3.0
 - [ ] Fix SENT-09 tech debt — add `response_format=` API parameter to `_create_completion()` for structured output enforcement — v3.0
 
 ### Out of Scope
@@ -115,4 +119,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-12 after v3 milestone start*
+*Last updated: 2026-06-12 after Phase 12 (CSS + CLI Integration) complete — v3 milestone complete*
