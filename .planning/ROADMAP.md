@@ -99,3 +99,25 @@ Plans:
 
 ---
 *Created 2026-06-04 by gsd-roadmapper.*
+
+### Phase 10.1: Fix SENT-06: align sentence rendering with chunk-based translations (INSERTED)
+
+**Goal:** Per-sentence EPUB correctly pairs each chunk's original text with its translation by carrying chunk text through the data model instead of re-splitting at render time.
+**Requirements**: SENT-06
+**Depends on:** Phase 10
+**Plans:** 1 plan
+
+Plans:
+
+- [ ] 10.1-01-PLAN.md — Add sentence_chunk_texts to Paragraph, populate in translate_sentence(), fix build_pair_html()
+
+### Phase 10.2: Fix MONO-02 + MONO-04: output extension and heading order (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: MONO-02, MONO-04
+**Depends on:** Phase 10
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 10.2 to break down)
