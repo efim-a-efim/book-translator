@@ -2,22 +2,22 @@
 gsd_state_version: 1.0
 milestone: v3
 milestone_name: Interactive Parallel EPUB
-current_phase: 11
+current_phase: 12
 status: executing
-last_updated: "2026-06-12T21:40:21.263Z"
-last_activity: 2026-06-12 -- Phase 11 execution started
+last_updated: "2026-06-12T22:10:08.752Z"
+last_activity: 2026-06-12 -- Phase 12 execution started
 progress:
   total_phases: 2
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  total_plans: 4
+  completed_plans: 3
   percent: 50
 ---
 
 # Project State
 
 **Current Milestone:** v3 Interactive Parallel EPUB
-**Current Phase:** 11
+**Current Phase:** 12
 **Status:** Ready to execute
 **Last Updated:** 2026-06-12
 
@@ -26,14 +26,14 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-12)
 
 **Core value:** A reader opens the output EPUB in any EPUB app and can follow the story paragraph-by-paragraph, seeing original and translated text together — without any special reader software.
-**Current focus:** Phase 11 — html-generation-engine
+**Current focus:** Phase 12 — CSS + CLI Integration
 
 ## Current Position
 
-Phase: 11 (html-generation-engine) — EXECUTING
+Phase: 12 (CSS + CLI Integration) — EXECUTING
 Plan: 2 of 2
 Status: Ready to execute
-Last activity: 2026-06-12 -- Phase 11 execution started
+Last activity: 2026-06-12 -- Phase 12 execution started
 
 ## Phase Progress
 
@@ -82,9 +82,12 @@ Overall: 0/2 phases complete [░░░░░░░░░░░░░░░░�
 |-------|------|----------|-------|
 | Phase 11 P01 | 200 | 2 tasks | 2 files |
 | Phase 11 P02 | 420 | 2 tasks | 2 files |
+| Phase 12 P01 | 5 | 2 tasks | 2 files |
 
 ## Decisions
 
 - [Phase ?]: HTML5 DOCTYPE fix and build_interactive_html implementation
 - [Phase ?]: BS4 processing order constraint
 - [Phase ?]: builder.py
+- [Phase ?]: _INTERACTIVE_CSS defined at module level in builder.py (D-12)
+- [Phase ?]: Double-backslash Python source produces single-backslash CSS escape for ebooklib safety (INTR-15)

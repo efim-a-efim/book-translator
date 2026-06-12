@@ -82,7 +82,7 @@ See: `.planning/milestones/v2/`
 
 **Wave 1** *(both plans parallel — no file overlap)*
 
-- [ ] 12-01-PLAN.md — Add _INTERACTIVE_CSS constant and wire into build_interactive(); update test_builder.py
+- [x] 12-01-PLAN.md — Add _INTERACTIVE_CSS constant and wire into build_interactive(); update test_builder.py
 - [ ] 12-02-PLAN.md — CLI edits (VALID_MODES, remove --output-format), add assemble_interactive(), update test_cli.py
 
 ## Progress
@@ -102,4 +102,4 @@ See: `.planning/milestones/v2/`
 | 10.1. Fix SENT-06 | v2 | 1/1 | ✓ Complete | 2026-06-11 |
 | 10.2. Fix MONO-02 + MONO-04 | v2 | 1/1 | ✓ Complete | 2026-06-11 |
 | 11. HTML Generation Engine | v3 | 2/2 | Complete   | 2026-06-12 |
-| 12. CSS + CLI Integration | v3 | 0/2 | Not started | - |
+| 12. CSS + CLI Integration | v3 | 1/2 | In Progress|  |

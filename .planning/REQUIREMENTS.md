@@ -35,11 +35,11 @@
 
 ### Interactive Mode — CSS
 
-- [ ] **INTR-13**: Interactive CSS is bundled in `style.css` within the EPUB — no `<script>` tags anywhere in the output
-- [ ] **INTR-14**: CSS removes the browser/reader disclosure triangle using all three rules: `summary { list-style: none }`, `summary::-webkit-details-marker { display: none }`, `summary::marker { display: none }`
-- [ ] **INTR-15**: CSS uses `\25B6` / `\25BC` Unicode escape sequences (not raw Unicode characters) in `content:` values to prevent ebooklib encoding corruption
-- [ ] **INTR-16**: CSS `style.css` content is passed to `EpubItem` as UTF-8 encoded bytes (`.encode("utf-8")`)
-- [ ] **INTR-17**: Heading translation span uses `display: block`, reduced font size (≤0.65em), reduced opacity (≤0.65), and italic style so it is visually subordinate to the heading
+- [x] **INTR-13**: Interactive CSS is bundled in `style.css` within the EPUB — no `<script>` tags anywhere in the output
+- [x] **INTR-14**: CSS removes the browser/reader disclosure triangle using all three rules: `summary { list-style: none }`, `summary::-webkit-details-marker { display: none }`, `summary::marker { display: none }`
+- [x] **INTR-15**: CSS uses `\25B6` / `\25BC` Unicode escape sequences (not raw Unicode characters) in `content:` values to prevent ebooklib encoding corruption
+- [x] **INTR-16**: CSS `style.css` content is passed to `EpubItem` as UTF-8 encoded bytes (`.encode("utf-8")`)
+- [x] **INTR-17**: Heading translation span uses `display: block`, reduced font size (≤0.65em), reduced opacity (≤0.65), and italic style so it is visually subordinate to the heading
 
 ### Interactive Mode — Implementation Constraints
 
@@ -75,11 +75,11 @@
 | INTR-10 | Phase 11 | Complete |
 | INTR-11 | Phase 11 | Complete |
 | INTR-12 | Phase 11 | Complete |
-| INTR-13 | Phase 12 | Pending |
-| INTR-14 | Phase 12 | Pending |
-| INTR-15 | Phase 12 | Pending |
-| INTR-16 | Phase 12 | Pending |
-| INTR-17 | Phase 12 | Pending |
+| INTR-13 | Phase 12 | Complete |
+| INTR-14 | Phase 12 | Complete |
+| INTR-15 | Phase 12 | Complete |
+| INTR-16 | Phase 12 | Complete |
+| INTR-17 | Phase 12 | Complete |
 | INTR-18 | Phase 11 | Complete |
 | INTR-19 | Phase 11 | Complete |
 
