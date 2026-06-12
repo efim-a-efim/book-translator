@@ -173,4 +173,4 @@ def wrap_chapter_xhtml(
 ) -> str:
     """Wrap HTML pair snippets in a full HTML5 XHTML document."""
     body = "\n".join(pairs)
-    return _XHTML_TEMPLATE.format(title=title, lang=lang, body=body)
+    return _XHTML_TEMPLATE.format(title=_html.escape(title), lang=lang, body=body)
