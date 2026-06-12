@@ -140,23 +140,27 @@ def build_interactive_html(
 
     if para.kind == "heading":
         escaped_text = _html.escape(para.text)
-        trans = _html.escape(para.translation or "")
-        span = (
-            f'<span class="bt-heading-translation"'
-            f' xml:lang="{target_lang}" lang="{target_lang}">'
-            f"{trans}</span>"
-        )
-        return f"<h2>{escaped_text}{span}</h2>"
+        if para.translation:
+            trans = _html.escape(para.translation)
+            safe_lang = _html.escape(target_lang)
+            span = (
+                f'<span class="bt-heading-translation"'
+                f' xml:lang="{safe_lang}" lang="{safe_lang}">'
+                f"{trans}</span>"
+            )
+            return f"<h2>{escaped_text}{span}</h2>"
+        return f"<h2>{escaped_text}</h2>"
 
     # paragraph / caption / footnote  (INTR-06, INTR-08)
     prefixed_orig = _prefix_ids(para.raw_html)       # INTR-18: BS4 before <details>
     trans = _html.escape(para.translation or "")
+    safe_lang = _html.escape(target_lang)
     open_attr = ' open="open"' if is_first else ""   # INTR-07: XML attribute form
     return (
         f'<details class="bt-interactive"{open_attr}>'
         f'<summary class="bt-original">{prefixed_orig}</summary>'
         f'<p class="bt-translation"'
-        f' xml:lang="{target_lang}" lang="{target_lang}">{trans}</p>'
+        f' xml:lang="{safe_lang}" lang="{safe_lang}">{trans}</p>'
         f"</details>"
     )
 
@@ -176,4 +180,4 @@ def wrap_chapter_xhtml(
 ) -> str:
     """Wrap HTML pair snippets in a full HTML5 XHTML document."""
     body = "\n".join(pairs)
-    return _XHTML_TEMPLATE.format(title=_html.escape(title), lang=lang, body=body)
+    return _XHTML_TEMPLATE.format(title=_html.escape(title), lang=_html.escape(lang), body=body)
