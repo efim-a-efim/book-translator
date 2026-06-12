@@ -71,3 +71,79 @@ class EpubBuilder:
         book.toc = tuple(toc_entries)
 
         return book
+
+    def build_monolingual(
+        self,
+        doc: BookDocument,
+        target_lang: str,
+        book_id: str = "",
+    ) -> epub.EpubBook:
+        """Build monolingual EPUB with translated-only content.
+        
+        No paragraph pairing or source text interleaving.
+        """
+        book = epub.EpubBook()
+        book.set_identifier(book_id or str(uuid.uuid4()))
+        book.set_title(doc.title)
+        book.add_author(doc.author)
+        book.set_language(target_lang)
+
+        book.add_item(epub.EpubNcx())
+        book.add_item(epub.EpubNav())
+
+        all_chapter_items: list[epub.EpubHtml] = []
+        toc_entries: list = []
+
+        for chapter_num, chapter in enumerate(doc.chapters, 1):
+            # Monolingual: only translated text, no pairing
+            title_html = f"<h1>{_html.escape(chapter.title)}</h1>" if chapter.title else ""
+            content_parts = []
+            for para in chapter.paragraphs:
+                if para.kind in ("image", "table"):
+                    content_parts.append(para.raw_html)
+                elif para.translation:
+                    # Only translation, no original
+                    content_parts.append(f"<p>{_html.escape(para.translation)}</p>")
+                elif para.kind == "heading":
+                    content_parts.append(f"<h2>{_html.escape(para.text)}</h2>")
+
+            body_html = "\n".join(content_parts)
+            parts = split_chapter_parts([body_html], title_html, chapter_num)
+
+            chapter_items: list[epub.EpubHtml] = []
+            for part_html, filename in parts:
+                xhtml_content = wrap_chapter_xhtml([part_html], chapter.title or "", lang=target_lang)
+                ch_item = epub.EpubHtml(title=chapter.title or "", file_name=filename, lang=target_lang)
+                ch_item.content = xhtml_content.encode("utf-8")
+                book.add_item(ch_item)
+                chapter_items.append(ch_item)
+
+            all_chapter_items.extend(chapter_items)
+
+            if len(chapter_items) == 1:
+                toc_entries.append(
+                    epub.Link(
+                        href=chapter_items[0].file_name,
+                        title=chapter.title or "",
+                        uid=chapter_items[0].file_name,
+                    )
+                )
+            else:
+                toc_entries.append(
+                    (
+                        epub.Section(chapter.title or ""),
+                        [
+                            epub.Link(
+                                href=item.file_name,
+                                title=f"{chapter.title or ''} (Part {k})",
+                                uid=item.file_name,
+                            )
+                            for k, item in enumerate(chapter_items, 1)
+                        ],
+                    )
+                )
+
+        book.spine = ["nav"] + all_chapter_items
+        book.toc = tuple(toc_entries)
+
+        return book

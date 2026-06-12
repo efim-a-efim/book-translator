@@ -86,10 +86,10 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 7. Mode Selection & CLI Dispatch | 0/0 | Not started | - |
-| 8. Per-Sentence Mode | 0/0 | Not started | - |
-| 9. Monolingual Mode | 0/0 | Not started | - |
-| 10. Backwards Compatibility Verification | 0/0 | Not started | - |
+| 7. Mode Selection & CLI Dispatch | 2/2 | ✓ Complete | 2026-06-04 |
+| 8. Per-Sentence Mode | 0/0 | ✓ Complete | 2026-06-04 |
+| 9. Monolingual Mode | 0/0 | ✓ Complete | 2026-06-04 |
+| 10. Backwards Compatibility Verification | 1/1 | ✓ Complete | 2026-06-04 |
 
 ## Coverage
 

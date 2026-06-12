@@ -7,7 +7,7 @@ import ebooklib
 import pytest
 from ebooklib import epub
 
-from book_translator.assembler import assemble
+from book_translator.assembler import assemble, assemble_monolingual
 from book_translator.models.document import BookDocument, Chapter, Paragraph
 
 
@@ -124,3 +124,119 @@ def test_assemble_no_tmp_file_left(translated_job_dir):
     assemble(translated_job_dir, "ru")
     tmp_files = list((translated_job_dir / "dst").glob("*.tmp"))
     assert len(tmp_files) == 0
+
+
+# --- Monolingual integration tests (MONO-04, MONO-05, MONO-06) ---
+
+
+def test_assemble_monolingual_epub(tmp_path):
+    """Monolingual EPUB assembly produces translated-only output."""
+    from book_translator.assembler import assemble_monolingual
+
+    job_dir = tmp_path / "run_mono"
+    (job_dir / "src").mkdir(parents=True)
+    (job_dir / "dst").mkdir(parents=True)
+
+    doc = BookDocument(
+        title="Test Book",
+        author="Test Author",
+        source_lang="en",
+        chapters=[
+            Chapter(
+                id="ch1",
+                title="Chapter One",
+                paragraphs=[
+                    Paragraph(
+                        id="p1",
+                        text="Hello world.",
+                        raw_html="<p>Hello world.</p>",
+                        translation="Привет мир.",
+                        kind="paragraph",
+                    ),
+                ],
+            ),
+        ],
+    )
+    (job_dir / "dst" / "test_book.en.json").write_text(doc.to_json(), encoding="utf-8")
+
+    result = assemble_monolingual(job_dir, "ru", output_format="epub")
+    assert isinstance(result, Path)
+    assert result.name == "test_book.ru.epub"
+    assert zipfile.is_zipfile(result)
+
+
+def test_assemble_monolingual_txt(tmp_path):
+    """Monolingual TXT assembly produces translated-only output with chapter separators."""
+    from book_translator.assembler import assemble_monolingual
+
+    job_dir = tmp_path / "run_mono_txt"
+    (job_dir / "src").mkdir(parents=True)
+    (job_dir / "dst").mkdir(parents=True)
+
+    doc = BookDocument(
+        title="Test Book",
+        author="Test Author",
+        source_lang="en",
+        chapters=[
+            Chapter(
+                id="ch1",
+                title="Chapter One",
+                paragraphs=[
+                    Paragraph(
+                        id="p1",
+                        text="Hello world.",
+                        raw_html="<p>Hello world.</p>",
+                        translation="Привет мир.",
+                        kind="paragraph",
+                    ),
+                ],
+            ),
+        ],
+    )
+    (job_dir / "dst" / "test_book.en.json").write_text(doc.to_json(), encoding="utf-8")
+
+    result = assemble_monolingual(job_dir, "ru", output_format="txt")
+    assert isinstance(result, Path)
+    assert result.name == "test_book.ru.txt"
+    content = result.read_text(encoding="utf-8")
+    assert "Привет мир." in content
+    assert "Hello world." not in content  # No original text
+
+
+def test_assemble_monolingual_md(tmp_path):
+    """Monolingual MD assembly produces translated-only output with heading structure."""
+    from book_translator.assembler import assemble_monolingual
+
+    job_dir = tmp_path / "run_mono_md"
+    (job_dir / "src").mkdir(parents=True)
+    (job_dir / "dst").mkdir(parents=True)
+
+    doc = BookDocument(
+        title="Test Book",
+        author="Test Author",
+        source_lang="en",
+        chapters=[
+            Chapter(
+                id="ch1",
+                title="Chapter One",
+                paragraphs=[
+                    Paragraph(
+                        id="p1",
+                        text="Hello world.",
+                        raw_html="<p>Hello world.</p>",
+                        translation="Привет мир.",
+                        kind="paragraph",
+                    ),
+                ],
+            ),
+        ],
+    )
+    (job_dir / "dst" / "test_book.en.json").write_text(doc.to_json(), encoding="utf-8")
+
+    result = assemble_monolingual(job_dir, "ru", output_format="md")
+    assert isinstance(result, Path)
+    assert result.name == "test_book.ru.md"
+    content = result.read_text(encoding="utf-8")
+    assert "Привет мир." in content
+    assert "Hello world." not in content  # No original text
+    assert "# Chapter One" in content  # Chapter as heading

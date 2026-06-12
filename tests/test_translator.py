@@ -588,3 +588,153 @@ def test_parse_batch_translations_logs_debug_on_empty_content(caplog: pytest.Log
 
     assert result == {}
     assert "empty/null content" in caplog.text.lower()
+
+
+# === Phase 8: Sentence chunking tests ===
+
+
+def test_sentence_chunk_header_not_split() -> None:
+    """Headers are emitted as single whole chunks, never sentence-split."""
+    from book_translator.translator.chunker import build_sentence_chunks
+
+    chapter = Chapter(
+        id="ch0",
+        paragraphs=[
+            Paragraph(id="ch0:0", text="This is a heading with multiple sentences! Here's another.", raw_html="", kind="heading"),
+            Paragraph(id="ch0:1", text="Body paragraph.", raw_html="", kind="paragraph"),
+        ],
+    )
+    doc = BookDocument(title="T", chapters=[chapter])
+    chunks = build_sentence_chunks(doc, "en")
+    
+    # Header should be one chunk, not split
+    header_chunks = [c for c in chunks if c.is_heading]
+    assert len(header_chunks) == 1
+    assert header_chunks[0].text == "This is a heading with multiple sentences! Here's another."
+    assert header_chunks[0].is_heading is True
+
+
+def test_sentence_chunk_splits_paragraph() -> None:
+    """Regular paragraphs are split into sentences."""
+    from book_translator.translator.chunker import build_sentence_chunks
+
+    chapter = Chapter(
+        id="ch0",
+        paragraphs=[
+            Paragraph(id="ch0:0", text="First sentence. Second sentence. Third sentence.", raw_html="", kind="paragraph"),
+        ],
+    )
+    doc = BookDocument(title="T", chapters=[chapter])
+    chunks = build_sentence_chunks(doc, "en")
+    
+    # Should have 1 chunk (3 sentences fit in one chunk)
+    assert len(chunks) == 1
+    assert "First sentence" in chunks[0].text
+    assert "Second sentence" in chunks[0].text
+    assert "Third sentence" in chunks[0].text
+
+
+def test_sentence_chunk_4_word_merge() -> None:
+    """Sentences with ≤4 words merge into preceding chunk."""
+    from book_translator.translator.chunker import build_sentence_chunks
+
+    chapter = Chapter(
+        id="ch0",
+        paragraphs=[
+            Paragraph(id="ch0:0", text="First sentence. Two words. Three words. Fourth sentence.", raw_html="", kind="paragraph"),
+        ],
+    )
+    doc = BookDocument(title="T", chapters=[chapter])
+    chunks = build_sentence_chunks(doc, "en")
+    
+    # "Two words" and "Three words" (4 words each) should merge into first chunk
+    # "Fourth sentence" starts new chunk
+    assert len(chunks) == 2
+    assert "First sentence" in chunks[0].text
+    assert "Two words" in chunks[0].text
+    assert "Three words" in chunks[0].text
+    assert "Fourth sentence" in chunks[1].text
+
+
+def test_sentence_chunk_3_sentence_limit() -> None:
+    """No chunk exceeds 3 sentences."""
+    from book_translator.translator.chunker import build_sentence_chunks
+
+    chapter = Chapter(
+        id="ch0",
+        paragraphs=[
+            Paragraph(id="ch0:0", text="One. Two. Three. Four. Five.", raw_html="", kind="paragraph"),
+        ],
+    )
+    doc = BookDocument(title="T", chapters=[chapter])
+    chunks = build_sentence_chunks(doc, "en")
+    
+    # Should split into chunks of max 3 sentences
+    assert len(chunks) == 2
+    # First chunk: One, Two, Three
+    assert "One" in chunks[0].text and "Two" in chunks[0].text and "Three" in chunks[0].text
+    # Second chunk: Four, Five
+    assert "Four" in chunks[1].text and "Five" in chunks[1].text
+
+
+def test_sentence_chunk_mixed_content() -> None:
+    """Mixed headings and paragraphs handled correctly."""
+    from book_translator.translator.chunker import build_sentence_chunks
+
+    chapter = Chapter(
+        id="ch0",
+        paragraphs=[
+            Paragraph(id="ch0:0", text="Heading One. Heading Two.", raw_html="", kind="heading"),
+            Paragraph(id="ch0:1", text="Body sentence one. Body sentence two.", raw_html="", kind="paragraph"),
+            Paragraph(id="ch0:2", text="Another body.", raw_html="", kind="paragraph"),
+        ],
+    )
+    doc = BookDocument(title="T", chapters=[chapter])
+    chunks = build_sentence_chunks(doc, "en")
+    
+    # Heading not split, body split into sentences
+    assert len(chunks) == 3
+    assert chunks[0].is_heading is True
+    assert chunks[0].text == "Heading One. Heading Two."
+    # Body paragraph has 2 sentences, fits in one chunk
+    assert "Body sentence one" in chunks[1].text
+    assert "Body sentence two" in chunks[1].text
+    assert "Another body" in chunks[2].text
+
+
+def test_sentence_batch_groups_by_token_budget() -> None:
+    """Sentence batches respect token budget limit."""
+    from book_translator.translator.chunker import build_sentence_batches
+
+    chapter = Chapter(
+        id="ch0",
+        paragraphs=[
+            Paragraph(id="ch0:0", text="Short one.", raw_html="", kind="paragraph"),
+            Paragraph(id="ch0:1", text="Short two.", raw_html="", kind="paragraph"),
+            Paragraph(id="ch0:2", text="Short three.", raw_html="", kind="paragraph"),
+        ],
+    )
+    doc = BookDocument(title="T", chapters=[chapter])
+    batches = build_sentence_batches(doc, "en", token_budget=1000)
+    
+    # All short sentences should fit in one batch
+    assert len(batches) == 1
+    assert len(batches[0].items) == 3
+
+
+def test_sentence_batch_separates_by_chapter() -> None:
+    """Sentence batches flush at chapter boundaries."""
+    from book_translator.translator.chunker import build_sentence_batches
+
+    ch0 = Chapter(
+        id="ch0",
+        paragraphs=[Paragraph(id="ch0:0", text="Ch0 sentence.", raw_html="", kind="paragraph")],
+    )
+    ch1 = Chapter(
+        id="ch1",
+        paragraphs=[Paragraph(id="ch1:0", text="Ch1 sentence.", raw_html="", kind="paragraph")],
+    )
+    doc = BookDocument(title="T", chapters=[ch0, ch1])
+    batches = build_sentence_batches(doc, "en", token_budget=1000)
+    
+    assert len(batches) == 2

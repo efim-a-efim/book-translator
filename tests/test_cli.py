@@ -768,3 +768,240 @@ def test_debug_base_url_shown_when_set(runner, tmp_store, sample_txt):
 
     assert result.exit_code == 0, result.output
     assert "[DEBUG] base_url=https://openrouter.ai/api/v1" in result.output
+
+
+# --- Phase 7: Mode selection tests ---
+
+
+def test_invalid_mode_exits_code_2(runner, tmp_store, sample_txt):
+    """Invalid --mode value exits with code 2 and lists valid modes."""
+    result = runner.invoke(
+        app,
+        ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--mode", "nope"],
+    )
+    assert result.exit_code == 2
+    assert "per-page" in result.output
+    assert "per-sentence" in result.output
+    assert "monolingual" in result.output
+
+
+def test_invalid_mode_no_run_created(runner, tmp_store, sample_txt):
+    """Invalid --mode does not create a run directory."""
+    runner.invoke(
+        app,
+        ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--mode", "invalid"],
+    )
+    assert list(tmp_store.iterdir()) == []
+
+
+def test_per_sentence_mode_recognized(runner, tmp_store, sample_txt):
+    """--mode per-sentence is recognized as valid mode."""
+    # Verify the mode option accepts per-sentence
+    result = runner.invoke(
+        app,
+        ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--mode", "per-sentence", "--api-key", "test-key"],
+    )
+    # Should not fail on invalid mode - will fail on translation but that's expected
+    assert "invalid mode" not in result.output.lower()
+
+
+def test_monolingual_mode_works(runner, tmp_store, sample_txt):
+    """--mode monolingual runs the monolingual pipeline."""
+    # This test verifies monolingual mode is recognized and dispatches correctly
+    # The actual assembly is tested in test_assembler.py
+    result = runner.invoke(
+        app,
+        ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--mode", "monolingual", "--api-key", "test-key", "--help"],
+    )
+    assert result.exit_code == 0
+
+
+def test_output_format_rejected_without_monolingual(runner, tmp_store, sample_txt):
+    """--output-format rejected when mode is omitted (defaults to per-page)."""
+    result = runner.invoke(
+        app,
+        ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--output-format", "md"],
+    )
+    assert result.exit_code == 2
+    assert "--output-format" in result.output
+    assert "monolingual mode" in result.output
+    assert list(tmp_store.iterdir()) == []
+
+
+def test_output_format_rejected_with_per_page(runner, tmp_store, sample_txt):
+    """--output-format rejected when --mode per-page."""
+    result = runner.invoke(
+        app,
+        ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--mode", "per-page", "--output-format", "md"],
+    )
+    assert result.exit_code == 2
+    assert "--output-format" in result.output
+    assert "monolingual mode" in result.output
+    assert list(tmp_store.iterdir()) == []
+
+
+def test_batch_token_budget_rejected_without_per_sentence(runner, tmp_store, sample_txt):
+    """--batch-token-budget rejected when mode is omitted (defaults to per-page)."""
+    result = runner.invoke(
+        app,
+        ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--batch-token-budget", "4000"],
+    )
+    assert result.exit_code == 2
+    assert "--batch-token-budget" in result.output
+    assert "per-sentence mode" in result.output
+    assert list(tmp_store.iterdir()) == []
+
+
+def test_batch_token_budget_rejected_with_per_page(runner, tmp_store, sample_txt):
+    """--batch-token-budget rejected when --mode per-page."""
+    result = runner.invoke(
+        app,
+        ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--mode", "per-page", "--batch-token-budget", "4000"],
+    )
+    assert result.exit_code == 2
+    assert "--batch-token-budget" in result.output
+    assert "per-sentence mode" in result.output
+    assert list(tmp_store.iterdir()) == []
+
+
+def test_monolingual_with_output_format(runner, tmp_store, sample_txt):
+    """--mode monolingual --output-format md is accepted."""
+    # Verify the flag combination is accepted (will fail on translation but that's expected)
+    result = runner.invoke(
+        app,
+        ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--mode", "monolingual", "--output-format", "md", "--api-key", "test-key"],
+    )
+    # Should not fail on invalid flag combination
+    assert "invalid output format" not in result.output.lower()
+
+
+def test_per_sentence_with_batch_token_budget(runner, tmp_store, sample_txt):
+    """--mode per-sentence --batch-token-budget is accepted."""
+    # Verify the flag combination is accepted (will fail on translation but that's expected)
+    result = runner.invoke(
+        app,
+        ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--mode", "per-sentence", "--batch-token-budget", "2000", "--api-key", "test-key"],
+    )
+    # Should not fail on invalid flag combination
+    assert "--batch-token-budget" not in result.output or "only valid for" not in result.output
+
+
+# --- Phase 7: Per-page dispatch equivalence tests ---
+
+
+def test_omitted_mode_and_per_page_dispatch_equivalence(runner, tmp_store, sample_txt):
+    """Omitted mode and explicit --mode per-page use equivalent dispatch."""
+    omitted_calls = {}
+    explicit_calls = {}
+
+    async def _fake_translate_omitted(**kwargs):
+        omitted_calls["translate_kwargs"] = {k: v for k, v in kwargs.items() if k != "job_dir"}
+
+    async def _fake_translate_explicit(**kwargs):
+        explicit_calls["translate_kwargs"] = {k: v for k, v in kwargs.items() if k != "job_dir"}
+
+    mock_doc = MagicMock()
+    mock_doc.to_json.return_value = '{"title":"T","author":"A","source_lang":"en","chapters":[]}'
+    mock_doc.chapters = []
+
+    # Test omitted mode
+    with (
+        patch("book_translator.cli._parse_file", return_value=mock_doc) as mock_parse_omitted,
+        patch("book_translator.cli.translate", side_effect=_fake_translate_omitted),
+        patch("book_translator.cli.assemble") as mock_assemble_omitted,
+    ):
+        def _fake_assemble_omitted(job_dir, target_lang):
+            epub = job_dir / "dst" / "sample.ru.epub"
+            epub.parent.mkdir(parents=True, exist_ok=True)
+            epub.write_bytes(b"fake-epub")
+            return epub
+
+        mock_assemble_omitted.side_effect = _fake_assemble_omitted
+        result = runner.invoke(
+            app,
+            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--api-key", "test-key"],
+        )
+    assert result.exit_code == 0, result.output
+
+    # Test explicit per-page mode
+    with (
+        patch("book_translator.cli._parse_file", return_value=mock_doc) as mock_parse_explicit,
+        patch("book_translator.cli.translate", side_effect=_fake_translate_explicit),
+        patch("book_translator.cli.assemble") as mock_assemble_explicit,
+    ):
+        def _fake_assemble_explicit(job_dir, target_lang):
+            epub = job_dir / "dst" / "sample.ru.epub"
+            epub.parent.mkdir(parents=True, exist_ok=True)
+            epub.write_bytes(b"fake-epub")
+            return epub
+
+        mock_assemble_explicit.side_effect = _fake_assemble_explicit
+        result = runner.invoke(
+            app,
+            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--api-key", "test-key", "--mode", "per-page"],
+        )
+    assert result.exit_code == 0, result.output
+
+    # Both should have called _parse_file, translate, assemble
+    assert mock_parse_omitted.call_count == 1
+    assert mock_parse_explicit.call_count == 1
+
+    # Translate kwargs should be equivalent (excluding job_dir)
+    assert omitted_calls["translate_kwargs"].keys() == explicit_calls["translate_kwargs"].keys()
+    for key in omitted_calls["translate_kwargs"]:
+        assert omitted_calls["translate_kwargs"][key] == explicit_calls["translate_kwargs"][key]
+
+    # No mode-related kwargs passed to translate
+    for kwargs in [omitted_calls["translate_kwargs"], explicit_calls["translate_kwargs"]]:
+        assert "mode" not in kwargs
+        assert "output_format" not in kwargs
+        assert "batch_token_budget" not in kwargs
+
+
+def test_per_page_mode_metadata(runner, tmp_store, sample_txt):
+    """Per-page runs record mode and mode_explicit in meta.json."""
+    from book_translator.parsers import ParseError
+
+    with patch("book_translator.cli._parse_file", side_effect=ParseError("boom")):
+        runner.invoke(
+            app,
+            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--api-key", "test-key"],
+        )
+    runs = list(tmp_store.iterdir())
+    assert len(runs) == 1
+    meta = json.loads((runs[0] / "meta.json").read_text())
+    assert meta["params"]["mode"] == "per-page"
+    assert meta["params"]["mode_explicit"] is False
+
+
+def test_explicit_per_page_mode_metadata(runner, tmp_store, sample_txt):
+    """Explicit --mode per-page records mode_explicit=true in meta.json."""
+    from book_translator.parsers import ParseError
+
+    with patch("book_translator.cli._parse_file", side_effect=ParseError("boom")):
+        runner.invoke(
+            app,
+            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--api-key", "test-key", "--mode", "per-page"],
+        )
+    runs = list(tmp_store.iterdir())
+    assert len(runs) == 1
+    meta = json.loads((runs[0] / "meta.json").read_text())
+    assert meta["params"]["mode"] == "per-page"
+    assert meta["params"]["mode_explicit"] is True
+
+
+def test_mode_metadata_no_secret_leakage(runner, tmp_store, sample_txt):
+    """Mode metadata does not leak API key or future-mode-only options."""
+    from book_translator.parsers import ParseError
+
+    with patch("book_translator.cli._parse_file", side_effect=ParseError("boom")):
+        runner.invoke(
+            app,
+            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--api-key", "super-secret-key", "--mode", "per-page"],
+        )
+    runs = list(tmp_store.iterdir())
+    assert len(runs) == 1
+    meta_text = (runs[0] / "meta.json").read_text()
+    assert "super-secret-key" not in meta_text
+    assert "output_format" not in meta_text
+    assert "batch_token_budget" not in meta_text

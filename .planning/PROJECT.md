@@ -36,15 +36,15 @@ A reader opens the output EPUB in any EPUB app and can follow the story paragrap
 
 ### Active
 
-- [ ] Translation mode selection via `--mode {per-page,per-sentence,monolingual}` (default per-page)
-- [ ] Per-sentence mode: nltk Punkt sentence tokenizer with Punkt data bootstrapping
-- [ ] Per-sentence chunking: sentences ≤4 words merged into previous chunk; max 3 sentences per chunk
-- [ ] Headers / sub-headers translated whole (never sentence-chunked)
-- [ ] Token-budget batching: pack many chunks per AI request up to configurable budget (default 4000 input tokens)
-- [ ] Structured AI output (JSON/HTML/XML schema) with chunk-ID round-tripping
-- [ ] Monolingual mode: translated-only output, no original text
-- [ ] Output format selection for monolingual mode: `--output-format {epub,txt,md}`
-- [ ] Per-page mode behavior preserved bit-for-bit when --mode omitted
+- [x] Translation mode selection via `--mode {per-page,per-sentence,monolingual}` (default per-page) — v2.0
+- [x] Per-sentence mode: nltk Punkt sentence tokenizer with Punkt data bootstrapping — v2.0
+- [x] Per-sentence chunking: sentences ≤4 words merged into previous chunk; max 3 sentences per chunk — v2.0
+- [x] Headers / sub-headers translated whole (never sentence-chunked) — v2.0
+- [x] Token-budget batching: pack many chunks per AI request up to configurable budget (default 4000 input tokens) — v2.0
+- [x] Structured AI output (JSON/HTML/XML schema) with chunk-ID round-tripping — v2.0
+- [x] Monolingual mode: translated-only output, no original text — v2.0
+- [x] Output format selection for monolingual mode: `--output-format {epub,txt,md}` — v2.0
+- [x] Per-page mode behavior preserved bit-for-bit when --mode omitted — v2.0
 
 ### Out of Scope
 
@@ -74,14 +74,14 @@ A reader opens the output EPUB in any EPUB app and can follow the story paragrap
 
 | Decision | Rationale | Outcome |
 |----------|-----------| -------|
-| Paragraph-pair EPUB output (not side-by-side columns) | Works in every EPUB reader without custom formatting logic | — Pending |
-| Smart vs Simple translation modes | Fiction quality varies greatly by context; "smart" pre-analysis amortizes cost over the whole book | — Pending |
-| Persistent run IDs for jobs | Long translations can take minutes; reconnecting to in-progress jobs without losing work is critical | — Pending |
-| OpenRouter / OpenAI-compatible API only | Lets users bring their own model and provider; avoids hard dependency on one vendor | — Pending |
-| Mode selection via single `--mode` CLI flag | One flag is more discoverable and Typer-idiomatic than separate subcommands | — Pending |
-| nltk PunktSentenceTokenizer for sentence split | Stable, ships with Python, multilingual coverage incl. Russian, no model download | — Pending |
-| Token-budget batching with structured AI output | Drastically reduces request count and cost for per-sentence mode; structured output enables reliable chunk-ID round-tripping | — Pending |
-| per-page remains default mode | Backward-compatible with v1 behavior | — Pending |
+| Paragraph-pair EPUB output (not side-by-side columns) | Works in every EPUB reader without custom formatting logic | ✓ Implemented |
+| Smart vs Simple translation modes | Fiction quality varies greatly by context; "smart" pre-analysis amortizes cost over the whole book | ✓ Implemented |
+| Persistent run IDs for jobs | Long translations can take minutes; reconnecting to in-progress jobs without losing work is critical | ✓ Implemented |
+| OpenRouter / OpenAI-compatible API only | Lets users bring their own model and provider; avoids hard dependency on one vendor | ✓ Implemented |
+| Mode selection via single `--mode` CLI flag | One flag is more discoverable and Typer-idiomatic than separate subcommands | ✓ Implemented |
+| nltk PunktSentenceTokenizer for sentence split | Stable, ships with Python, multilingual coverage incl. Russian, no model download | ✓ Implemented |
+| Token-budget batching with structured AI output | Drastically reduces request count and cost for per-sentence mode; structured output enables reliable chunk-ID round-tripping | ✓ Implemented |
+| per-page remains default mode | Backward-compatible with v1 behavior | ✓ Implemented |
 
 ## Evolution
 

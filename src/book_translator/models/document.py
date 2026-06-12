@@ -12,6 +12,7 @@ class Paragraph(BaseModel):
     text: str
     raw_html: str
     translation: str | None = None
+    sentence_translations: list[str] | None = None  # For per-sentence mode: translations per sentence
     kind: Literal["paragraph", "heading", "caption", "footnote", "image", "table"] = "paragraph"
 
 

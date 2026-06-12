@@ -226,3 +226,95 @@ def test_builder_chapter_filenames():
     items = [item for item in book.items if isinstance(item, _epub.EpubHtml)]
     filenames = [item.file_name for item in items]
     assert "chapter-01-pt1.xhtml" in filenames
+
+
+# --- Per-sentence mode tests (SENT-06) ---
+
+
+def test_build_pair_html_sentence_translations():
+    """Per-sentence mode renders each sentence pair separately."""
+    para = Paragraph(
+        id="p1",
+        text="Hello world. How are you?",
+        raw_html="<p>Hello world. How are you?</p>",
+        translation=None,
+        sentence_translations=["Привет мир.", "Как дела?"],
+        kind="paragraph",
+    )
+    result = build_pair_html(para)
+    assert 'class="bt-pair"' in result
+    assert "Привет мир." in result
+    assert "Как дела?" in result
+    # Should have bt-orig and bt-trans for each sentence
+    assert result.count("bt-orig") == 2
+    assert result.count("bt-trans") == 2
+
+
+def test_build_pair_html_sentence_translations_partial():
+    """Per-sentence mode handles missing translations gracefully."""
+    para = Paragraph(
+        id="p1",
+        text="Hello world. How are you?",
+        raw_html="<p>Hello world. How are you?</p>",
+        translation=None,
+        sentence_translations=["Привет мир."],  # Only one translation
+        kind="paragraph",
+    )
+    result = build_pair_html(para)
+    assert "Привет мир." in result
+    assert "[TRANSLATION FAILED]" in result
+
+
+# --- Monolingual mode tests (MONO-04) ---
+
+
+def test_builder_monolingual_no_pairing():
+    """Monolingual EPUB has no paragraph pairing."""
+    doc = BookDocument(
+        title="Book",
+        author="A",
+        source_lang="en",
+        chapters=[
+            Chapter(
+                id="c1",
+                title="Ch1",
+                paragraphs=[Para(id="p1", text="Hello", raw_html="<p>Hello</p>", translation="Привет", kind="paragraph")],
+            ),
+        ],
+    )
+    book = EpubBuilder().build_monolingual(doc, "ru")
+    # Should have spine items
+    assert len(book.spine) >= 2
+    # Check content has no bt-pair (no pairing)
+    from ebooklib import epub as _epub
+    for item in book.items:
+        if isinstance(item, _epub.EpubHtml) and item.content:
+            content = item.content.decode("utf-8")
+            assert "bt-pair" not in content
+            assert "Привет" in content
+
+
+def test_builder_monolingual_preserves_headings():
+    """Monolingual EPUB preserves headings."""
+    doc = BookDocument(
+        title="Book",
+        author="A",
+        source_lang="en",
+        chapters=[
+            Chapter(
+                id="c1",
+                title="Ch1",
+                paragraphs=[
+                    Para(id="p1", text="Section", raw_html="<h2>Section</h2>", kind="heading"),
+                    Para(id="p2", text="Hello", raw_html="<p>Hello</p>", translation="Привет", kind="paragraph"),
+                ],
+            ),
+        ],
+    )
+    book = EpubBuilder().build_monolingual(doc, "ru")
+    # Check content has heading
+    from ebooklib import epub as _epub
+    for item in book.items:
+        if isinstance(item, _epub.EpubHtml) and item.content:
+            content = item.content.decode("utf-8")
+            assert "Section" in content

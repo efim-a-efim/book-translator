@@ -9,7 +9,7 @@ from pathlib import Path
 
 import typer
 
-from book_translator.assembler import assemble
+from book_translator.assembler import assemble, assemble_monolingual
 from book_translator.models.job import JobMeta
 from book_translator.parsers import ParseError
 from book_translator.store.job_store import (
@@ -21,8 +21,12 @@ from book_translator.store.job_store import (
     JobStore,
 )
 from book_translator.translator import TranslationError, translate
+from book_translator.translator.engine import translate_sentence
 
 SUPPORTED_SUFFIXES = {".epub", ".txt", ".md", ".markdown"}
+
+VALID_MODES = {"per-page", "per-sentence", "monolingual"}
+VALID_OUTPUT_FORMATS = {"epub", "txt", "md"}
 
 app = typer.Typer(add_completion=False, help="AI-powered bilingual book translator.")
 
@@ -115,8 +119,11 @@ def translate_cmd(
     max_retries: int = typer.Option(5, "--max-retries", help="Max retries per paragraph"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show step-level logs"),
     debug: bool = typer.Option(False, "--debug", help="Enable debug mode: DEBUG logging + detailed diagnostics (implies --verbose)"),  # noqa: E501
+    mode: str | None = typer.Option(None, "--mode", help="Translation mode: per-page, per-sentence, or monolingual"),
+    output_format: str | None = typer.Option(None, "--output-format", help="Output format (epub, txt, md) - only for monolingual mode"),
+    batch_token_budget: int | None = typer.Option(None, "--batch-token-budget", help="Token budget per batch - only for per-sentence mode"),
 ) -> None:
-    """Translate a book file into a bilingual EPUB."""
+    """Translate a book file into bilingual or monolingual output."""
     # Step 1 — Configure logging (D-06)
     if debug:
         logging.basicConfig(level=logging.DEBUG, format="%(levelname)s %(name)s: %(message)s")
@@ -137,6 +144,39 @@ def translate_cmd(
     if not input_file.exists():
         typer.echo(f"Error: input file not found: {input_file}", err=True)
         raise typer.Exit(code=2)
+
+    # Step 2b — Mode validation before run creation (MODE-01, MODE-03)
+    effective_mode = mode if mode is not None else "per-page"
+    if mode is not None and mode not in VALID_MODES:
+        typer.echo(
+            f"Error: invalid mode '{mode}'. Valid modes: {', '.join(sorted(VALID_MODES))}",
+            err=True,
+        )
+        raise typer.Exit(code=2)
+
+    # Step 2c — Mode-scoped flag validation (MODE-04, MODE-05)
+    if output_format is not None and effective_mode != "monolingual":
+        typer.echo(
+            f"Error: --output-format is only valid for monolingual mode",
+            err=True,
+        )
+        raise typer.Exit(code=2)
+    if output_format is not None and output_format not in VALID_OUTPUT_FORMATS:
+        typer.echo(
+            f"Error: invalid output format '{output_format}'. Valid formats: {', '.join(sorted(VALID_OUTPUT_FORMATS))}",
+            err=True,
+        )
+        raise typer.Exit(code=2)
+    if batch_token_budget is not None and effective_mode != "per-sentence":
+        typer.echo(
+            f"Error: --batch-token-budget is only valid for per-sentence mode",
+            err=True,
+        )
+        raise typer.Exit(code=2)
+
+    # Step 2d — Future mode not-yet-implemented check (D-02, D-03)
+    # Monolingual mode is now implemented (Phase 9)
+    # Per-sentence mode is now implemented (Phase 8)
 
     # Step 3 — Resolve keys (D-09, D-12)
     resolved_api_key = _resolve_api_key(api_key)
@@ -164,6 +204,8 @@ def translate_cmd(
             "input_filename": input_file.name,
             "input_path": str(input_file.resolve()),
             "started_at": datetime.now(UTC).isoformat(),
+            "mode": effective_mode,
+            "mode_explicit": mode is not None,
         },
     )
     run_id = store.create_run(meta)
@@ -200,39 +242,60 @@ def translate_cmd(
             typer.echo(f"Translating {source_lang} → {target_lang} using {model} ...")
 
             def _progress_callback(done: int, total: int) -> None:
-                typer.echo(f"Progress: {done}/{total} paragraphs translated")
+                if effective_mode == "per-sentence":
+                    typer.echo(f"Progress: {done}/{total} chunks translated")
+                else:
+                    typer.echo(f"Progress: {done}/{total} paragraphs translated")
 
             progress_callback = _progress_callback
 
-        asyncio.run(
-            translate(
-                job_dir=run_dir,
-                model=model,
-                api_key=resolved_api_key,
-                base_url=resolved_base_url,
-                source_lang=source_lang,
-                target_lang=target_lang,
-                context_window=context_window,
-                concurrency=concurrency,
-                max_retries=max_retries,
-                progress_callback=progress_callback,
-            )
-        )
+        if effective_mode == "per-sentence":
+            translate_kwargs = {
+                "job_dir": run_dir,
+                "model": model,
+                "api_key": resolved_api_key,
+                "base_url": resolved_base_url,
+                "source_lang": source_lang,
+                "target_lang": target_lang,
+                "batch_token_budget": batch_token_budget or 4000,
+                "concurrency": concurrency,
+                "max_retries": max_retries,
+                "progress_callback": progress_callback,
+            }
+            asyncio.run(translate_sentence(**translate_kwargs))
+        else:
+            translate_kwargs = {
+                "job_dir": run_dir,
+                "model": model,
+                "api_key": resolved_api_key,
+                "base_url": resolved_base_url,
+                "source_lang": source_lang,
+                "target_lang": target_lang,
+                "context_window": context_window,
+                "concurrency": concurrency,
+                "max_retries": max_retries,
+                "progress_callback": progress_callback,
+            }
+            asyncio.run(translate(**translate_kwargs))
         if verbose:
             typer.echo("Translation complete.")
         if debug:
             _report_debug_failures(store.dst_dir(run_id))
 
-        # Step 6d — Assemble EPUB
+        # Step 6d — Assemble output
         if verbose:
-            typer.echo("Assembling EPUB ...")
-        epub_path = assemble(job_dir=run_dir, target_lang=target_lang)
+            typer.echo("Assembling output ...")
+        if effective_mode == "monolingual":
+            out_format = output_format or "epub"
+            out_path = assemble_monolingual(job_dir=run_dir, target_lang=target_lang, output_format=out_format)
+        else:
+            out_path = assemble(job_dir=run_dir, target_lang=target_lang)
         if verbose:
-            typer.echo(f"EPUB assembled: {epub_path}")
+            typer.echo(f"Output assembled: {out_path}")
 
-        # Step 6e — Copy/move EPUB to output destination (D-17)
+        # Step 6e — Copy/move output to destination (D-17)
         output_dest.parent.mkdir(parents=True, exist_ok=True)
-        _copy_or_move(epub_path, output_dest)
+        _copy_or_move(out_path, output_dest)
 
         # Step 6f — Auto-delete run on success (D-18)
         _set_state(store, run_id, STATE_COMPLETED)
