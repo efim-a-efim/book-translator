@@ -36,4 +36,8 @@ def split_chapter_parts(
             body_html = "".join(current_pairs)
         parts.append((body_html, f"chapter-{chapter_num:02d}-pt{part_num}.xhtml"))
 
+    # guard: title-only chapter (empty pairs) must still emit one part
+    if not parts and title_html:
+        parts.append((title_html, f"chapter-{chapter_num:02d}-pt1.xhtml"))
+
     return parts
