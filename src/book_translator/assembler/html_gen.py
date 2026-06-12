@@ -99,7 +99,7 @@ def build_pair_html(para: Paragraph) -> str:
             pairs.append(f'<p class="bt-trans">{para.sentence_translations[i]}</p>')
         return f'<div class="bt-pair">\n' + '\n'.join(pairs) + f'\n</div>'
     
-    trans_text = para.translation or ""
+    trans_text = _html.escape(para.translation or "")
 
     # Build translation element matching the tag of the original
     soup_orig = BeautifulSoup(para.raw_html, "lxml")
