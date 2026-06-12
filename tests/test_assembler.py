@@ -378,3 +378,80 @@ def test_builder_monolingual_preserves_headings():
         if isinstance(item, _epub.EpubHtml) and item.content:
             content = item.content.decode("utf-8")
             assert "Section" in content
+
+
+# --- MONO-04 regression tests ---
+
+
+def test_monolingual_heading_with_translation_renders_h2():
+    """Heading para with translation must render as <h2>, not <p> (MONO-04)."""
+    doc = BookDocument(
+        title="Book",
+        author="A",
+        source_lang="en",
+        chapters=[
+            Chapter(
+                id="c1",
+                title="Ch1",
+                paragraphs=[
+                    Para(
+                        id="p1",
+                        text="Chapter One",
+                        raw_html="<h2>Chapter One</h2>",
+                        translation="Kapitel Eins",
+                        kind="heading",
+                    ),
+                ],
+            ),
+        ],
+    )
+    book = EpubBuilder().build_monolingual(doc, "de")
+    from ebooklib import epub as _epub
+    full_content = ""
+    for item in book.items:
+        if isinstance(item, _epub.EpubHtml) and item.content:
+            full_content += item.content.decode("utf-8")
+    soup = BeautifulSoup(full_content, "lxml")
+    h2_tags = soup.find_all("h2")
+    h2_texts = [tag.get_text() for tag in h2_tags]
+    assert any("Chapter One" in t for t in h2_texts), f"Expected <h2> with 'Chapter One', got h2_texts={h2_texts}"
+    p_tags = soup.find_all("p")
+    p_texts = [tag.get_text() for tag in p_tags]
+    assert not any("Chapter One" in t for t in p_texts), f"'Chapter One' should not be in a <p>, got p_texts={p_texts}"
+
+
+def test_monolingual_body_para_with_translation_renders_p():
+    """Body para with translation must render as <p>, not <h2> (MONO-04)."""
+    doc = BookDocument(
+        title="Book",
+        author="A",
+        source_lang="en",
+        chapters=[
+            Chapter(
+                id="c1",
+                title="Ch1",
+                paragraphs=[
+                    Para(
+                        id="p1",
+                        text="Hello",
+                        raw_html="<p>Hello</p>",
+                        translation="Hallo",
+                        kind="paragraph",
+                    ),
+                ],
+            ),
+        ],
+    )
+    book = EpubBuilder().build_monolingual(doc, "de")
+    from ebooklib import epub as _epub
+    full_content = ""
+    for item in book.items:
+        if isinstance(item, _epub.EpubHtml) and item.content:
+            full_content += item.content.decode("utf-8")
+    soup = BeautifulSoup(full_content, "lxml")
+    p_tags = soup.find_all("p")
+    p_texts = [tag.get_text() for tag in p_tags]
+    assert any("Hallo" in t for t in p_texts), f"Expected <p> with 'Hallo', got p_texts={p_texts}"
+    h2_tags = soup.find_all("h2")
+    h2_texts = [tag.get_text() for tag in h2_tags]
+    assert not any("Hallo" in t for t in h2_texts), f"'Hallo' should not be in <h2>, got h2_texts={h2_texts}"
