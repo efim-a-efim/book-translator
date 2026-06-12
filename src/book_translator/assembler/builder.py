@@ -46,7 +46,7 @@ def _find_title_translation(chapter: Chapter, target_lang: str) -> str:
         span = (
             f'<span class="bt-heading-translation"'
             f' xml:lang="{target_lang}" lang="{target_lang}">'
-            f"{match.translation}</span>"
+            f"{_html.escape(match.translation)}</span>"
         )
         return f"<h1>{_html.escape(chapter.title)}{span}</h1>"
     return f"<h1>{_html.escape(chapter.title)}</h1>"
