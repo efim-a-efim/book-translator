@@ -38,7 +38,7 @@ See: `.planning/milestones/v2/`
 
 ### v3 Interactive Parallel EPUB
 
-- [ ] **Phase 11: HTML Generation Engine** - Fix CSS/DOCTYPE bugs and implement all interactive HTML rendering logic
+- [x] **Phase 11: HTML Generation Engine** - Fix CSS/DOCTYPE bugs and implement all interactive HTML rendering logic (completed 2026-06-12)
 - [ ] **Phase 12: CSS + CLI Integration** - Bundle interactive CSS, wire `--mode interactive` into CLI and builder
 
 ## Phase Details
@@ -63,7 +63,7 @@ See: `.planning/milestones/v2/`
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 11-02-PLAN.md — Add _make_css_item, CSS plumbing in all builders, build_interactive method
+- [x] 11-02-PLAN.md — Add _make_css_item, CSS plumbing in all builders, build_interactive method
 
 ### Phase 12: CSS + CLI Integration
 
@@ -97,5 +97,5 @@ See: `.planning/milestones/v2/`
 | 10. Backwards Compatibility | v2 | 1/1 | ✓ Complete | 2026-06-04 |
 | 10.1. Fix SENT-06 | v2 | 1/1 | ✓ Complete | 2026-06-11 |
 | 10.2. Fix MONO-02 + MONO-04 | v2 | 1/1 | ✓ Complete | 2026-06-11 |
-| 11. HTML Generation Engine | v3 | 1/2 | In Progress|  |
+| 11. HTML Generation Engine | v3 | 2/2 | Complete   | 2026-06-12 |
 | 12. CSS + CLI Integration | v3 | 0/? | Not started | - |

@@ -8,7 +8,7 @@
 
 ### Infrastructure Fixes (pre-existing bugs, required for v3 to work)
 
-- [ ] **INTR-01**: CSS is packaged into every EPUB produced by `build()`, `build_monolingual()`, and `build_interactive()` — each chapter item has the stylesheet linked and `book.add_item(css_item)` is called (fixes pre-existing bug where `<link>` in template was silently discarded by ebooklib)
+- [x] **INTR-01**: CSS is packaged into every EPUB produced by `build()`, `build_monolingual()`, and `build_interactive()` — each chapter item has the stylesheet linked and `book.add_item(css_item)` is called (fixes pre-existing bug where `<link>` in template was silently discarded by ebooklib)
 - [x] **INTR-02**: EPUB HTML content uses `<!DOCTYPE html>` (HTML5) — not XHTML 1.1 — so that `<details>`/`<summary>` elements are valid (fixes pre-existing incompatibility; ebooklib rewrites DOCTYPE anyway, but template must be updated for lxml parsing correctness)
 
 ### Interactive Mode — CLI
@@ -26,7 +26,7 @@
 ### Interactive Mode — Heading Rendering
 
 - [x] **INTR-09**: Headings (kind=`heading`, rendered as `<h2>`) include the original text plus an always-visible inline `<span class="bt-heading-translation" xml:lang="{target_lang}" lang="{target_lang}">…translation…</span>` — no `<details>` wrapper
-- [ ] **INTR-10**: Chapter titles (h1, from `chapter.title`) include the same inline `<span class="bt-heading-translation">` pattern
+- [x] **INTR-10**: Chapter titles (h1, from `chapter.title`) include the same inline `<span class="bt-heading-translation">` pattern
 
 ### Interactive Mode — Pass-through and Fallback
 
@@ -63,7 +63,7 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INTR-01 | Phase 11 | Pending |
+| INTR-01 | Phase 11 | Complete |
 | INTR-02 | Phase 11 | Complete |
 | INTR-03 | Phase 12 | Pending |
 | INTR-04 | Phase 12 | Pending |
@@ -72,7 +72,7 @@
 | INTR-07 | Phase 11 | Complete |
 | INTR-08 | Phase 11 | Complete |
 | INTR-09 | Phase 11 | Complete |
-| INTR-10 | Phase 11 | Pending |
+| INTR-10 | Phase 11 | Complete |
 | INTR-11 | Phase 11 | Complete |
 | INTR-12 | Phase 11 | Complete |
 | INTR-13 | Phase 12 | Pending |
