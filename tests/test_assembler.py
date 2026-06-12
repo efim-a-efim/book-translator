@@ -417,10 +417,10 @@ def test_monolingual_heading_with_translation_renders_h2():
     soup = BeautifulSoup(full_content, "lxml")
     h2_tags = soup.find_all("h2")
     h2_texts = [tag.get_text() for tag in h2_tags]
-    assert any("Chapter One" in t for t in h2_texts), f"Expected <h2> with 'Chapter One', got h2_texts={h2_texts}"
+    assert any("Kapitel Eins" in t for t in h2_texts), f"Expected <h2> with translation 'Kapitel Eins', got h2_texts={h2_texts}"
     p_tags = soup.find_all("p")
     p_texts = [tag.get_text() for tag in p_tags]
-    assert not any("Chapter One" in t for t in p_texts), f"'Chapter One' should not be in a <p>, got p_texts={p_texts}"
+    assert not any("Kapitel Eins" in t for t in p_texts), f"Translation should not be in a <p>, got p_texts={p_texts}"
 
 
 def test_monolingual_body_para_with_translation_renders_p():
