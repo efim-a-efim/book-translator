@@ -2,23 +2,23 @@
 gsd_state_version: 1.0
 milestone: v3
 milestone_name: Interactive Parallel EPUB
-current_phase: 11 — HTML Generation Engine (not started)
-status: planning
-last_updated: "2026-06-12T15:49:28.857Z"
-last_activity: 2026-06-12 — Roadmap created (2 phases, 19 requirements mapped)
+current_phase: 11
+status: executing
+last_updated: "2026-06-12T16:00:26.599Z"
+last_activity: 2026-06-12 -- Phase 11 execution started
 progress:
   total_phases: 2
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 2
+  completed_plans: 1
   percent: 0
 ---
 
 # Project State
 
 **Current Milestone:** v3 Interactive Parallel EPUB
-**Current Phase:** 11 — HTML Generation Engine (not started)
-**Status:** Ready to plan Phase 11
+**Current Phase:** 11
+**Status:** Ready to execute
 **Last Updated:** 2026-06-12
 
 ## Project Reference
@@ -26,14 +26,14 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-12)
 
 **Core value:** A reader opens the output EPUB in any EPUB app and can follow the story paragraph-by-paragraph, seeing original and translated text together — without any special reader software.
-**Current focus:** Phase 11 — fix CSS/DOCTYPE bugs, implement `build_interactive_html()` and all rendering logic
+**Current focus:** Phase 11 — html-generation-engine
 
 ## Current Position
 
-Phase: 11 — HTML Generation Engine
-Plan: —
-Status: Ready to start
-Last activity: 2026-06-12 — Roadmap created (2 phases, 19 requirements mapped)
+Phase: 11 (html-generation-engine) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-06-12 -- Phase 11 execution started
 
 ## Phase Progress
 
@@ -75,3 +75,14 @@ Overall: 0/2 phases complete [░░░░░░░░░░░░░░░░�
 |----|-------------|------|--------|-----------|
 | 260604-kax | Add progress output to `-v` | 2026-06-04 | 5d4c3ef | [260604-kax-add-progress-output-to-v](./quick/260604-kax-add-progress-output-to-v/) |
 | 260604-l64 | Add batching for paragraphs translation | 2026-06-04 | 487842f | [260604-l64-add-batching-for-paragraphs-translation](./quick/260604-l64-add-batching-for-paragraphs-translation/) |
+
+## Performance Metrics
+
+| Phase | Plan | Duration | Notes |
+|-------|------|----------|-------|
+| Phase 11 P01 | 200 | 2 tasks | 2 files |
+
+## Decisions
+
+- [Phase ?]: HTML5 DOCTYPE fix and build_interactive_html implementation
+- [Phase ?]: BS4 processing order constraint

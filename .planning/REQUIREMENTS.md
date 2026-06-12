@@ -9,7 +9,7 @@
 ### Infrastructure Fixes (pre-existing bugs, required for v3 to work)
 
 - [ ] **INTR-01**: CSS is packaged into every EPUB produced by `build()`, `build_monolingual()`, and `build_interactive()` — each chapter item has the stylesheet linked and `book.add_item(css_item)` is called (fixes pre-existing bug where `<link>` in template was silently discarded by ebooklib)
-- [ ] **INTR-02**: EPUB HTML content uses `<!DOCTYPE html>` (HTML5) — not XHTML 1.1 — so that `<details>`/`<summary>` elements are valid (fixes pre-existing incompatibility; ebooklib rewrites DOCTYPE anyway, but template must be updated for lxml parsing correctness)
+- [x] **INTR-02**: EPUB HTML content uses `<!DOCTYPE html>` (HTML5) — not XHTML 1.1 — so that `<details>`/`<summary>` elements are valid (fixes pre-existing incompatibility; ebooklib rewrites DOCTYPE anyway, but template must be updated for lxml parsing correctness)
 
 ### Interactive Mode — CLI
 
@@ -19,19 +19,19 @@
 
 ### Interactive Mode — Paragraph Rendering
 
-- [ ] **INTR-06**: Paragraphs (kind=`paragraph`) render as `<details class="bt-interactive"><summary class="bt-original">…original…</summary><p class="bt-translation" xml:lang="{target_lang}" lang="{target_lang}">…translation…</p></details>`
-- [ ] **INTR-07**: The first `<details>` in each chapter has the `open="open"` XML attribute set (discoverability — user sees one translation revealed by default)
-- [ ] **INTR-08**: Captions (kind=`caption`) and footnotes (kind=`footnote`) render as `<details>` — same structure as paragraphs
+- [x] **INTR-06**: Paragraphs (kind=`paragraph`) render as `<details class="bt-interactive"><summary class="bt-original">…original…</summary><p class="bt-translation" xml:lang="{target_lang}" lang="{target_lang}">…translation…</p></details>`
+- [x] **INTR-07**: The first `<details>` in each chapter has the `open="open"` XML attribute set (discoverability — user sees one translation revealed by default)
+- [x] **INTR-08**: Captions (kind=`caption`) and footnotes (kind=`footnote`) render as `<details>` — same structure as paragraphs
 
 ### Interactive Mode — Heading Rendering
 
-- [ ] **INTR-09**: Headings (kind=`heading`, rendered as `<h2>`) include the original text plus an always-visible inline `<span class="bt-heading-translation" xml:lang="{target_lang}" lang="{target_lang}">…translation…</span>` — no `<details>` wrapper
+- [x] **INTR-09**: Headings (kind=`heading`, rendered as `<h2>`) include the original text plus an always-visible inline `<span class="bt-heading-translation" xml:lang="{target_lang}" lang="{target_lang}">…translation…</span>` — no `<details>` wrapper
 - [ ] **INTR-10**: Chapter titles (h1, from `chapter.title`) include the same inline `<span class="bt-heading-translation">` pattern
 
 ### Interactive Mode — Pass-through and Fallback
 
-- [ ] **INTR-11**: Images (kind=`image`) and tables (kind=`table`) pass through unchanged (same as other modes)
-- [ ] **INTR-12**: Readers that do not support `<details>` display both original and translation permanently visible — no content is hidden or lost
+- [x] **INTR-11**: Images (kind=`image`) and tables (kind=`table`) pass through unchanged (same as other modes)
+- [x] **INTR-12**: Readers that do not support `<details>` display both original and translation permanently visible — no content is hidden or lost
 
 ### Interactive Mode — CSS
 
@@ -43,8 +43,8 @@
 
 ### Interactive Mode — Implementation Constraints
 
-- [ ] **INTR-18**: `<details>` wrapping is assembled after all BeautifulSoup/lxml processing (not before) — `_inject_class` and `_prefix_ids` never receive a `<details>` element as input
-- [ ] **INTR-19**: `build_interactive_html(para)` function in `html_gen.py` handles all paragraph kinds and returns a complete HTML string; it does not modify `build_pair_html()` behavior
+- [x] **INTR-18**: `<details>` wrapping is assembled after all BeautifulSoup/lxml processing (not before) — `_inject_class` and `_prefix_ids` never receive a `<details>` element as input
+- [x] **INTR-19**: `build_interactive_html(para)` function in `html_gen.py` handles all paragraph kinds and returns a complete HTML string; it does not modify `build_pair_html()` behavior
 
 ## Out of Scope
 
@@ -64,26 +64,27 @@
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | INTR-01 | Phase 11 | Pending |
-| INTR-02 | Phase 11 | Pending |
+| INTR-02 | Phase 11 | Complete |
 | INTR-03 | Phase 12 | Pending |
 | INTR-04 | Phase 12 | Pending |
 | INTR-05 | Phase 12 | Pending |
-| INTR-06 | Phase 11 | Pending |
-| INTR-07 | Phase 11 | Pending |
-| INTR-08 | Phase 11 | Pending |
-| INTR-09 | Phase 11 | Pending |
+| INTR-06 | Phase 11 | Complete |
+| INTR-07 | Phase 11 | Complete |
+| INTR-08 | Phase 11 | Complete |
+| INTR-09 | Phase 11 | Complete |
 | INTR-10 | Phase 11 | Pending |
-| INTR-11 | Phase 11 | Pending |
-| INTR-12 | Phase 11 | Pending |
+| INTR-11 | Phase 11 | Complete |
+| INTR-12 | Phase 11 | Complete |
 | INTR-13 | Phase 12 | Pending |
 | INTR-14 | Phase 12 | Pending |
 | INTR-15 | Phase 12 | Pending |
 | INTR-16 | Phase 12 | Pending |
 | INTR-17 | Phase 12 | Pending |
-| INTR-18 | Phase 11 | Pending |
-| INTR-19 | Phase 11 | Pending |
+| INTR-18 | Phase 11 | Complete |
+| INTR-19 | Phase 11 | Complete |
 
 **Coverage:**
+
 - v3 requirements: 19 total (INTR×19)
 - Mapped to phases: 19/19 (100%)
 - Phase 11: 11 requirements (INTR-01, INTR-02, INTR-06–12, INTR-18, INTR-19)

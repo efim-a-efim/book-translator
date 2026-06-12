@@ -59,7 +59,7 @@ See: `.planning/milestones/v2/`
 **Plans**: 2 plansPlans:
 **Wave 1**
 
-- [ ] 11-01-PLAN.md — Fix DOCTYPE + implement build_interactive_html in html_gen.py
+- [x] 11-01-PLAN.md — Fix DOCTYPE + implement build_interactive_html in html_gen.py
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -97,5 +97,5 @@ See: `.planning/milestones/v2/`
 | 10. Backwards Compatibility | v2 | 1/1 | ✓ Complete | 2026-06-04 |
 | 10.1. Fix SENT-06 | v2 | 1/1 | ✓ Complete | 2026-06-11 |
 | 10.2. Fix MONO-02 + MONO-04 | v2 | 1/1 | ✓ Complete | 2026-06-11 |
-| 11. HTML Generation Engine | v3 | 0/2 | Not started | - |
+| 11. HTML Generation Engine | v3 | 1/2 | In Progress|  |
 | 12. CSS + CLI Integration | v3 | 0/? | Not started | - |
