@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html as _html
 import re
 from collections.abc import Sequence
 
@@ -13,9 +14,7 @@ _PASS_THROUGH_KINDS = {"image", "table"}
 _ID_PREFIX = "bt-orig-"
 
 _XHTML_TEMPLATE = """\
-<?xml version="1.0" encoding="utf-8"?>
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
-  "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="{lang}">
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
@@ -113,6 +112,50 @@ def build_pair_html(para: Paragraph) -> str:
     return f'<div class="bt-pair">\n{orig_html}\n{trans_html}\n</div>'
 
 
+def build_interactive_html(
+    para: Paragraph,
+    target_lang: str,
+    is_first: bool = False,
+) -> str:
+    """Return interactive HTML for *para* in CSS-only details/summary mode.
+
+    For pass-through kinds (image, table) the original raw_html is returned
+    unchanged (INTR-11).  Headings produce ``<h2>`` with an inline translation
+    span (INTR-09).  All other kinds (paragraph, caption, footnote) produce
+    ``<details class="bt-interactive">`` with ``<summary class="bt-original">``
+    and ``<p class="bt-translation">`` (INTR-06, INTR-08).
+
+    ``_prefix_ids`` is applied to ``para.raw_html`` BEFORE assembling the
+    ``<details>`` wrapper so that BS4/lxml never sees a ``<details>`` element
+    (INTR-18).  ``is_first=True`` adds ``open="open"`` to the first
+    ``<details>`` per chapter (INTR-07).
+    """
+    if para.kind in _PASS_THROUGH_KINDS:
+        return para.raw_html
+
+    if para.kind == "heading":
+        escaped_text = _html.escape(para.text)
+        trans = para.translation or ""
+        span = (
+            f'<span class="bt-heading-translation"'
+            f' xml:lang="{target_lang}" lang="{target_lang}">'
+            f"{trans}</span>"
+        )
+        return f"<h2>{escaped_text}{span}</h2>"
+
+    # paragraph / caption / footnote  (INTR-06, INTR-08)
+    prefixed_orig = _prefix_ids(para.raw_html)       # INTR-18: BS4 before <details>
+    trans = para.translation or ""
+    open_attr = ' open="open"' if is_first else ""   # INTR-07: XML attribute form
+    return (
+        f'<details class="bt-interactive"{open_attr}>'
+        f'<summary class="bt-original">{prefixed_orig}</summary>'
+        f'<p class="bt-translation"'
+        f' xml:lang="{target_lang}" lang="{target_lang}">{trans}</p>'
+        f"</details>"
+    )
+
+
 def _split_sentences_for_rendering(text: str) -> list[str]:
     """Split text into sentences for per-sentence rendering."""
     import re
@@ -126,6 +169,6 @@ def wrap_chapter_xhtml(
     title: str = "",
     lang: str = "en",
 ) -> str:
-    """Wrap HTML pair snippets in a full XHTML 1.1 document."""
+    """Wrap HTML pair snippets in a full HTML5 XHTML document."""
     body = "\n".join(pairs)
     return _XHTML_TEMPLATE.format(title=title, lang=lang, body=body)

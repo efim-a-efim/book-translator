@@ -128,7 +128,8 @@ def test_build_pair_html_no_translation():
 def test_wrap_chapter_xhtml_structure():
     pairs = ["<p>one</p>", "<p>two</p>"]
     result = wrap_chapter_xhtml(pairs, title="Chapter 1", lang="ru")
-    assert '<?xml version="1.0"' in result
+    # INTR-02: HTML5 DOCTYPE (no longer XHTML 1.1)
+    assert result.startswith("<!DOCTYPE html>")
     assert "<title>Chapter 1</title>" in result
     assert 'xml:lang="ru"' in result
     assert "<p>one</p>" in result
@@ -518,10 +519,10 @@ class TestBuildInteractiveHtml:
         summary = details.find("summary")
         assert summary is not None
         assert "bt-original" in summary.get("class", [])
-        p = details.find("p")
-        assert p is not None
-        assert "bt-translation" in p.get("class", [])
-        assert p.get("xml:lang") == "ru" or p.get("lang") == "ru"
+        # find translation <p> by class (not the first <p> inside summary)
+        p_trans = details.find("p", class_="bt-translation")
+        assert p_trans is not None, "Expected <p class='bt-translation'> inside <details>"
+        assert p_trans.get("lang") == "ru"
 
     # Test 5: is_first=True adds open="open" (INTR-07)
     def test_is_first_adds_open_attr(self):
