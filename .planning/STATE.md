@@ -1,23 +1,24 @@
 ---
 gsd_state_version: 1.0
-milestone: v2
-milestone_name: Translation Modes
-current_phase: closed
-status: closed
+milestone: v3
+milestone_name: Interactive Parallel EPUB
+current_phase: ~
+status: planning
 last_updated: "2026-06-12T00:00:00.000Z"
-last_activity: 2026-06-12 -- v2 milestone closed, archived to .planning/milestones/v2/
+last_activity: 2026-06-12 -- Milestone v3 started, defining requirements
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 8
-  completed_plans: 8
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
-**Current Milestone:** v2 Translation Modes — CLOSED 2026-06-12
-**Status:** Archived
+**Current Milestone:** v3 Interactive Parallel EPUB
+**Current Phase:** Not started (defining requirements)
+**Status:** Planning
 **Last Updated:** 2026-06-12
 
 ## Project Reference
@@ -25,7 +26,18 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-12)
 
 **Core value:** A reader opens the output EPUB in any EPUB app and can follow the story paragraph-by-paragraph, seeing original and translated text together — without any special reader software.
-**Current focus:** Planning next milestone (v3 Interactive Parallel EPUB)
+**Current focus:** Defining v3 requirements and roadmap
+
+## Current Position
+
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-06-12 — Milestone v3 started
+
+## Phase Progress
+
+*(no phases yet — roadmap pending)*
 
 ## v1 Milestone (closed)
 
@@ -36,25 +48,20 @@ See: `.planning/PROJECT.md` (updated 2026-06-12)
 ## v2 Milestone (closed)
 
 - Closed 2026-06-12, status tech_debt accepted
-- 6 phases complete (7, 8, 9, 10, 10.1, 10.2), 24/24 requirements satisfied
-- 8 plans complete
+- 6 phases complete (7–10.2), 24/24 requirements satisfied
 - Archived to `.planning/milestones/v2/`
-- Tech debt: no VERIFICATION.md files; SENT-09 system-prompt JSON only
 
 ## Accumulated Context
 
-### Key Decisions (v2)
+### Key Decisions (v3 — pre-implementation)
 
-- Mode selection via single `--mode` flag (per-page default, per-sentence, monolingual)
-- nltk PunktSentenceTokenizer for sentence splitting
-- Token-budget batching (default 4000 tokens) with structured JSON output
-- `sentence_chunk_texts` carried through Paragraph data model to fix SENT-06
-- `FORMAT_TO_EXT` dict for clean extension derivation (MONO-02 fix)
-
-### Known Tech Debt (v2 close)
-
-- SENT-09: `response_format=` API parameter not used; structured output via system prompt only
-- No VERIFICATION.md files for any v2 phase
+- CSS-only `<details>`/`<summary>` — no JavaScript anywhere for compatibility and security
+- Paragraphs use `<details>`: original in `<summary>`, translation revealed on tap
+- Headings use always-visible inline span: short enough that both are acceptable always-visible
+- Graceful fallback: readers without `<details>` support see both texts (no content loss)
+- `epub:type="translation"` for semantic markup; custom readers can target it
+- Works with both per-page and per-sentence granularity (each sentence chunk gets its own `<details>`)
+- `--mode interactive` rejects `--output-format` other than epub (exit code 2)
 
 ## Quick Tasks Completed
 

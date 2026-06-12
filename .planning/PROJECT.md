@@ -8,13 +8,24 @@ An open-source AI-powered fiction book translator that converts books (EPUB, FB2
 
 A reader opens the output EPUB in any EPUB app and can follow the story paragraph-by-paragraph, seeing original and translated text together — without any special reader software.
 
-## Current State
+## Current Milestone: v3 Interactive Parallel EPUB
 
-**v2 shipped 2026-06-12.** Three translation modes available: per-page (default), per-sentence, and monolingual. 1967 LOC Python. 187 tests pass.
+**Goal:** Add `--mode interactive` that produces an EPUB where original text is always visible and translations are revealed per-unit on tap using CSS-only HTML5 `<details>`/`<summary>` — no JavaScript.
+
+**Target features:**
+- `--mode interactive` CLI flag with cross-flag validation
+- Paragraphs rendered as `<details>` — original in `<summary>`, translation revealed on tap
+- Headings rendered with always-visible inline translation span (no `<details>`)
+- Captions, footnotes → `<details>` (same as paragraphs)
+- Images, tables → pass-through
+- CSS bundled in `style.css`; zero `<script>` tags in output
+- Graceful fallback: readers without `<details>` show both texts permanently
+
+**Previous state:** v2 shipped 2026-06-12. Three translation modes: per-page (default), per-sentence, monolingual. 1967 LOC Python. 187 tests pass.
 
 ## Requirements
 
-### Validated
+### Validated (v1)
 
 - [x] Parse source books in EPUB, FB2, FB2.ZIP, TXT, and Markdown formats — v1.0
 - [x] Translate book content using any OpenRouter / OpenAI-compatible API endpoint and user-specified model — v1.0
@@ -29,7 +40,7 @@ A reader opens the output EPUB in any EPUB app and can follow the story paragrap
 - [x] CLI interface: accept book file + configuration → start translation job → report run ID → allow status check and result download — v1.0
 - [x] Progress tracking: show translation progress (paragraphs done / total) during a job — v1.0
 
-### Validated
+### Validated (v2)
 
 - ✓ Translation mode selection via `--mode {per-page,per-sentence,monolingual}` (default per-page) — v2.0
 - ✓ Per-sentence mode: nltk Punkt sentence tokenizer with Punkt data bootstrapping — v2.0
@@ -41,7 +52,7 @@ A reader opens the output EPUB in any EPUB app and can follow the story paragrap
 - ✓ Output format selection for monolingual mode: `--output-format {epub,txt,md}` — v2.0
 - ✓ Per-page mode behavior preserved bit-for-bit when --mode omitted — v2.0
 
-### Active
+### Active (v3)
 
 - [ ] Interactive parallel EPUB mode (`--mode interactive`) — CSS-only `<details>`/`<summary>` reveal-on-tap for translations, no JS — v3.0
 - [ ] Fix SENT-09 tech debt — add `response_format=` API parameter to `_create_completion()` for structured output enforcement — v3.0
@@ -104,4 +115,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-12 after v2 milestone close*
+*Last updated: 2026-06-12 after v3 milestone start*
