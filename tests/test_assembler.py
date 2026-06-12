@@ -455,3 +455,142 @@ def test_monolingual_body_para_with_translation_renders_p():
     h2_tags = soup.find_all("h2")
     h2_texts = [tag.get_text() for tag in h2_tags]
     assert not any("Hallo" in t for t in h2_texts), f"'Hallo' should not be in <h2>, got h2_texts={h2_texts}"
+
+
+# ---------------------------------------------------------------------------
+# TestDoctype — TDD RED (INTR-02)
+# ---------------------------------------------------------------------------
+
+
+class TestDoctype:
+    """INTR-02: _XHTML_TEMPLATE must use HTML5 DOCTYPE."""
+
+    def test_doctype_is_html5(self):
+        from book_translator.assembler.html_gen import _XHTML_TEMPLATE  # noqa: PLC0415
+        assert _XHTML_TEMPLATE.startswith("<!DOCTYPE html>"), (
+            f"Expected _XHTML_TEMPLATE to start with '<!DOCTYPE html>', "
+            f"got: {_XHTML_TEMPLATE[:80]!r}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# TestBuildInteractiveHtml — TDD RED (INTR-06 through INTR-12, INTR-18, INTR-19)
+# ---------------------------------------------------------------------------
+
+
+class TestBuildInteractiveHtml:
+    """Tests for build_interactive_html covering all paragraph kinds."""
+
+    def _make_para(self, kind="paragraph", raw_html="<p>Hello</p>", text="Hello", translation="Привет"):
+        return Paragraph(
+            id="p1",
+            text=text,
+            raw_html=raw_html,
+            translation=translation,
+            kind=kind,
+        )
+
+    def _import(self):
+        from book_translator.assembler.html_gen import build_interactive_html  # noqa: PLC0415
+        return build_interactive_html
+
+    # Test 2: image pass-through (INTR-11)
+    def test_image_passthrough(self):
+        build_interactive_html = self._import()
+        para = self._make_para(kind="image", raw_html='<img src="fig.png"/>', text="", translation=None)
+        assert build_interactive_html(para, "ru") == para.raw_html
+
+    # Test 3: table pass-through (INTR-11)
+    def test_table_passthrough(self):
+        build_interactive_html = self._import()
+        para = self._make_para(kind="table", raw_html="<table><tr><td>x</td></tr></table>", text="", translation=None)
+        assert build_interactive_html(para, "ru") == para.raw_html
+
+    # Test 4: paragraph produces <details class="bt-interactive"> (INTR-06)
+    def test_paragraph_details_structure(self):
+        build_interactive_html = self._import()
+        para = self._make_para(kind="paragraph")
+        result = build_interactive_html(para, "ru")
+        soup = BeautifulSoup(result, "lxml")
+        details = soup.find("details")
+        assert details is not None, "Expected <details> for paragraph kind"
+        assert "bt-interactive" in details.get("class", [])
+        summary = details.find("summary")
+        assert summary is not None
+        assert "bt-original" in summary.get("class", [])
+        p = details.find("p")
+        assert p is not None
+        assert "bt-translation" in p.get("class", [])
+        assert p.get("xml:lang") == "ru" or p.get("lang") == "ru"
+
+    # Test 5: is_first=True adds open="open" (INTR-07)
+    def test_is_first_adds_open_attr(self):
+        build_interactive_html = self._import()
+        para = self._make_para(kind="paragraph")
+        result = build_interactive_html(para, "ru", is_first=True)
+        assert 'open="open"' in result
+
+    # Test 6: is_first=False (default) has no open attr (INTR-07)
+    def test_is_first_false_no_open_attr(self):
+        build_interactive_html = self._import()
+        para = self._make_para(kind="paragraph")
+        result = build_interactive_html(para, "ru", is_first=False)
+        soup = BeautifulSoup(result, "lxml")
+        details = soup.find("details")
+        assert details is not None
+        assert "open" not in details.attrs
+
+    # Test 7: caption kind produces <details> (INTR-08)
+    def test_caption_details_structure(self):
+        build_interactive_html = self._import()
+        para = self._make_para(kind="caption")
+        result = build_interactive_html(para, "ru")
+        soup = BeautifulSoup(result, "lxml")
+        details = soup.find("details")
+        assert details is not None
+        assert "bt-interactive" in details.get("class", [])
+
+    # Test 8: footnote kind produces <details> (INTR-08)
+    def test_footnote_details_structure(self):
+        build_interactive_html = self._import()
+        para = self._make_para(kind="footnote")
+        result = build_interactive_html(para, "ru")
+        soup = BeautifulSoup(result, "lxml")
+        details = soup.find("details")
+        assert details is not None
+        assert "bt-interactive" in details.get("class", [])
+
+    # Test 9: heading kind produces <h2> with span, no <details> (INTR-09)
+    def test_heading_h2_with_span_no_details(self):
+        build_interactive_html = self._import()
+        para = self._make_para(kind="heading", raw_html="<h2>Chapter One</h2>", text="Chapter One", translation="Глава Один")
+        result = build_interactive_html(para, "ru")
+        soup = BeautifulSoup(result, "lxml")
+        assert soup.find("details") is None, "Heading must not produce <details>"
+        h2 = soup.find("h2")
+        assert h2 is not None, "Heading must produce <h2>"
+        span = h2.find("span")
+        assert span is not None
+        assert "bt-heading-translation" in span.get("class", [])
+        assert span.get("xml:lang") == "ru" or span.get("lang") == "ru"
+
+    # Test 10: ID prefixing confirms _prefix_ids ran (INTR-18)
+    def test_id_prefixed_in_summary(self):
+        build_interactive_html = self._import()
+        para = self._make_para(kind="paragraph", raw_html='<p id="foo">Text</p>')
+        result = build_interactive_html(para, "ru")
+        soup = BeautifulSoup(result, "lxml")
+        assert soup.find(id="bt-orig-foo") is not None, "Expected id='bt-orig-foo' in output"
+
+    # Test 11: both summary and translation present (INTR-12)
+    def test_both_original_and_translation_present(self):
+        build_interactive_html = self._import()
+        para = self._make_para(kind="paragraph", raw_html="<p>Hello</p>", translation="Привет")
+        result = build_interactive_html(para, "ru")
+        soup = BeautifulSoup(result, "lxml")
+        summary = soup.find("summary")
+        assert summary is not None
+        assert summary.get_text(strip=True) != ""
+        p_trans = soup.find("p", class_="bt-translation")
+        assert p_trans is not None
+        assert "Привет" in p_trans.get_text()
