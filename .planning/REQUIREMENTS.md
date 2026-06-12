@@ -63,30 +63,32 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INTR-01 | TBD | Pending |
-| INTR-02 | TBD | Pending |
-| INTR-03 | TBD | Pending |
-| INTR-04 | TBD | Pending |
-| INTR-05 | TBD | Pending |
-| INTR-06 | TBD | Pending |
-| INTR-07 | TBD | Pending |
-| INTR-08 | TBD | Pending |
-| INTR-09 | TBD | Pending |
-| INTR-10 | TBD | Pending |
-| INTR-11 | TBD | Pending |
-| INTR-12 | TBD | Pending |
-| INTR-13 | TBD | Pending |
-| INTR-14 | TBD | Pending |
-| INTR-15 | TBD | Pending |
-| INTR-16 | TBD | Pending |
-| INTR-17 | TBD | Pending |
-| INTR-18 | TBD | Pending |
-| INTR-19 | TBD | Pending |
+| INTR-01 | Phase 11 | Pending |
+| INTR-02 | Phase 11 | Pending |
+| INTR-03 | Phase 12 | Pending |
+| INTR-04 | Phase 12 | Pending |
+| INTR-05 | Phase 12 | Pending |
+| INTR-06 | Phase 11 | Pending |
+| INTR-07 | Phase 11 | Pending |
+| INTR-08 | Phase 11 | Pending |
+| INTR-09 | Phase 11 | Pending |
+| INTR-10 | Phase 11 | Pending |
+| INTR-11 | Phase 11 | Pending |
+| INTR-12 | Phase 11 | Pending |
+| INTR-13 | Phase 12 | Pending |
+| INTR-14 | Phase 12 | Pending |
+| INTR-15 | Phase 12 | Pending |
+| INTR-16 | Phase 12 | Pending |
+| INTR-17 | Phase 12 | Pending |
+| INTR-18 | Phase 11 | Pending |
+| INTR-19 | Phase 11 | Pending |
 
 **Coverage:**
 - v3 requirements: 19 total (INTR×19)
-- Mapped to phases: TBD (roadmapper fills this)
-- Unmapped: TBD
+- Mapped to phases: 19/19 (100%)
+- Phase 11: 11 requirements (INTR-01, INTR-02, INTR-06–12, INTR-18, INTR-19)
+- Phase 12: 8 requirements (INTR-03–05, INTR-13–17)
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-06-12*

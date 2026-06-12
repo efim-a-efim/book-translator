@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v3
 milestone_name: Interactive Parallel EPUB
-current_phase: ~
-status: planning
+current_phase: 11
+status: ready
 last_updated: "2026-06-12T00:00:00.000Z"
-last_activity: 2026-06-12 -- Milestone v3 started, defining requirements
+last_activity: 2026-06-12 -- Roadmap created, Phase 11 ready to plan
 progress:
-  total_phases: 0
+  total_phases: 2
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,8 +17,8 @@ progress:
 # Project State
 
 **Current Milestone:** v3 Interactive Parallel EPUB
-**Current Phase:** Not started (defining requirements)
-**Status:** Planning
+**Current Phase:** 11 — HTML Generation Engine (not started)
+**Status:** Ready to plan Phase 11
 **Last Updated:** 2026-06-12
 
 ## Project Reference
@@ -26,18 +26,23 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-12)
 
 **Core value:** A reader opens the output EPUB in any EPUB app and can follow the story paragraph-by-paragraph, seeing original and translated text together — without any special reader software.
-**Current focus:** Defining v3 requirements and roadmap
+**Current focus:** Phase 11 — fix CSS/DOCTYPE bugs, implement `build_interactive_html()` and all rendering logic
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 11 — HTML Generation Engine
 Plan: —
-Status: Defining requirements
-Last activity: 2026-06-12 — Milestone v3 started
+Status: Ready to start
+Last activity: 2026-06-12 — Roadmap created (2 phases, 19 requirements mapped)
 
 ## Phase Progress
 
-*(no phases yet — roadmap pending)*
+```
+Phase 11: HTML Generation Engine  [ ] Not started  (0/? plans)
+Phase 12: CSS + CLI Integration   [ ] Not started  (0/? plans)
+
+Overall: 0/2 phases complete [░░░░░░░░░░░░░░░░░░░░] 0%
+```
 
 ## v1 Milestone (closed)
 
@@ -59,9 +64,10 @@ Last activity: 2026-06-12 — Milestone v3 started
 - Paragraphs use `<details>`: original in `<summary>`, translation revealed on tap
 - Headings use always-visible inline span: short enough that both are acceptable always-visible
 - Graceful fallback: readers without `<details>` support see both texts (no content loss)
-- `epub:type="translation"` for semantic markup; custom readers can target it
-- Works with both per-page and per-sentence granularity (each sentence chunk gets its own `<details>`)
 - `--mode interactive` rejects `--output-format` other than epub (exit code 2)
+- `build_interactive_html()` assembled after all BS4/lxml processing (INTR-18 constraint)
+- CSS uses `\25B6`/`\25BC` escapes, passed as `.encode("utf-8")` to EpubItem (INTR-15, INTR-16)
+- Phase 11 delivers HTML engine (11 requirements); Phase 12 delivers CSS+CLI surface (8 requirements)
 
 ## Quick Tasks Completed
 
