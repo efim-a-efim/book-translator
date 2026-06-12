@@ -100,8 +100,9 @@ def build_pair_html(para: Paragraph) -> str:
         pairs = []
         pair_count = min(len(source_texts), len(para.sentence_translations))
         for i in range(pair_count):
-            pairs.append(f'<p class="bt-orig">{_html.escape(source_texts[i])}</p>')
+            # Target-first ordering: translation (bt-trans) before source (bt-orig).
             pairs.append(f'<p class="bt-trans">{_html.escape(para.sentence_translations[i])}</p>')
+            pairs.append(f'<p class="bt-orig">{_html.escape(source_texts[i])}</p>')
         return f'<div class="bt-pair">\n' + '\n'.join(pairs) + f'\n</div>'
     
     trans_text = _html.escape(para.translation or "")
@@ -114,7 +115,8 @@ def build_pair_html(para: Paragraph) -> str:
 
     trans_html = f'<{tag_name} class="bt-trans">{trans_text}</{tag_name}>'
 
-    return f'<div class="bt-pair">\n{orig_html}\n{trans_html}\n</div>'
+    # Target-first ordering: translation before source inside the pair div.
+    return f'<div class="bt-pair">\n{trans_html}\n{orig_html}\n</div>'
 
 
 def build_interactive_html(
