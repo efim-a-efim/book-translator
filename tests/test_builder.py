@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from ebooklib import epub
 
-from book_translator.assembler.builder import EpubBuilder, _make_css_item
+from book_translator.assembler.builder import EpubBuilder, _INTERACTIVE_CSS, _make_css_item
 from book_translator.models.document import BookDocument, Chapter, Paragraph
 
 
@@ -160,3 +160,32 @@ class TestBuildInteractive:
         # spine is a list; first element should be "nav"
         assert book.spine[0] == "nav"
         assert len(book.spine) > 1
+
+
+# ---------------------------------------------------------------------------
+# _INTERACTIVE_CSS constant smoke test (RED gate — Task 1)
+# ---------------------------------------------------------------------------
+
+
+class TestInteractiveCSSConstantExists:
+    def test_constant_importable(self):
+        """_INTERACTIVE_CSS must exist as a module-level string."""
+        assert isinstance(_INTERACTIVE_CSS, str)
+        assert len(_INTERACTIVE_CSS) > 0
+
+    def test_no_raw_arrow_chars(self):
+        """Raw Unicode arrows must not appear — CSS hex escapes only (INTR-15)."""
+        assert chr(0x25B6) not in _INTERACTIVE_CSS
+        assert chr(0x25BC) not in _INTERACTIVE_CSS
+
+    def test_css_escape_present(self):
+        """Literal CSS escape \\25B6 must be present in the constant."""
+        assert "\\25B6" in _INTERACTIVE_CSS
+
+    def test_build_interactive_css_bytes_non_empty(self):
+        """build_interactive() must produce non-empty CSS bytes (INTR-16)."""
+        doc = _make_doc()
+        book = EpubBuilder().build_interactive(doc, "ru", book_id="test-id")
+        css_items = [i for i in book.get_items() if getattr(i, "media_type", "") == "text/css"]
+        assert css_items, "No CSS item found"
+        assert css_items[0].content != b"", "CSS content must not be empty stub"
