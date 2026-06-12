@@ -13,9 +13,9 @@
 
 ### Interactive Mode — CLI
 
-- [ ] **INTR-03**: `--mode interactive` is a valid mode value alongside `per-page`, `per-sentence`, `monolingual`
-- [ ] **INTR-04**: `--mode interactive` with `--output-format` other than `epub` exits code 2 with a clear error message
-- [ ] **INTR-05**: Omitting `--mode` continues to default to `per-page` (no behavior change)
+- [x] **INTR-03**: `--mode interactive` is a valid mode value alongside `per-page`, `per-sentence`, `monolingual`
+- [x] **INTR-04**: `--mode interactive` with `--output-format` other than `epub` exits code 2 with a clear error message (superseded by D-02: `--output-format` removed entirely; any use of `--output-format` yields exit code 2)
+- [x] **INTR-05**: Omitting `--mode` continues to default to `per-page` (no behavior change)
 
 ### Interactive Mode — Paragraph Rendering
 
@@ -65,9 +65,9 @@
 |-------------|-------|--------|
 | INTR-01 | Phase 11 | Complete |
 | INTR-02 | Phase 11 | Complete |
-| INTR-03 | Phase 12 | Pending |
-| INTR-04 | Phase 12 | Pending |
-| INTR-05 | Phase 12 | Pending |
+| INTR-03 | Phase 12 | Complete |
+| INTR-04 | Phase 12 | Complete |
+| INTR-05 | Phase 12 | Complete |
 | INTR-06 | Phase 11 | Complete |
 | INTR-07 | Phase 11 | Complete |
 | INTR-08 | Phase 11 | Complete |

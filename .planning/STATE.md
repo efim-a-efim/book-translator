@@ -4,14 +4,14 @@ milestone: v3
 milestone_name: Interactive Parallel EPUB
 current_phase: 12
 status: executing
-last_updated: "2026-06-12T22:10:08.752Z"
-last_activity: 2026-06-12 -- Phase 12 execution started
+last_updated: "2026-06-12T22:30:00.000Z"
+last_activity: 2026-06-12 -- Phase 12 Plan 02 completed
 progress:
   total_phases: 2
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 4
-  completed_plans: 3
-  percent: 50
+  completed_plans: 4
+  percent: 100
 ---
 
 # Project State
@@ -30,18 +30,18 @@ See: `.planning/PROJECT.md` (updated 2026-06-12)
 
 ## Current Position
 
-Phase: 12 (CSS + CLI Integration) — EXECUTING
-Plan: 2 of 2
-Status: Ready to execute
-Last activity: 2026-06-12 -- Phase 12 execution started
+Phase: 12 (CSS + CLI Integration) — COMPLETE
+Plan: 2 of 2 (ALL COMPLETE)
+Status: Phase complete
+Last activity: 2026-06-12 -- Phase 12 Plan 02 completed
 
 ## Phase Progress
 
 ```
-Phase 11: HTML Generation Engine  [ ] Not started  (0/? plans)
-Phase 12: CSS + CLI Integration   [ ] Not started  (0/? plans)
+Phase 11: HTML Generation Engine  [x] Complete  (2/2 plans)
+Phase 12: CSS + CLI Integration   [x] Complete  (2/2 plans)
 
-Overall: 0/2 phases complete [░░░░░░░░░░░░░░░░░░░░] 0%
+Overall: 2/2 phases complete [████████████████████] 100%
 ```
 
 ## v1 Milestone (closed)
@@ -83,6 +83,7 @@ Overall: 0/2 phases complete [░░░░░░░░░░░░░░░░�
 | Phase 11 P01 | 200 | 2 tasks | 2 files |
 | Phase 11 P02 | 420 | 2 tasks | 2 files |
 | Phase 12 P01 | 5 | 2 tasks | 2 files |
+| Phase 12 P02 | 10 | 3 tasks | 4 files |
 
 ## Decisions
 
@@ -91,3 +92,6 @@ Overall: 0/2 phases complete [░░░░░░░░░░░░░░░░�
 - [Phase ?]: builder.py
 - [Phase ?]: _INTERACTIVE_CSS defined at module level in builder.py (D-12)
 - [Phase ?]: Double-backslash Python source produces single-backslash CSS escape for ebooklib safety (INTR-15)
+- [Phase 12-02]: VALID_MODES = {per-page, per-sentence, monolingual, interactive} (D-01)
+- [Phase 12-02]: --output-format, VALID_OUTPUT_FORMATS, FORMAT_TO_EXT removed from cli.py (D-02)
+- [Phase 12-02]: assemble_monolingual() simplified to epub-only; txt/md dead code removed (D-04)

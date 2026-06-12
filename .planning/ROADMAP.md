@@ -4,7 +4,7 @@
 
 - ✅ **v1 MVP** — Phases 1-6 (shipped 2026-06-03)
 - ✅ **v2 Translation Modes** — Phases 7-10.2 (shipped 2026-06-12)
-- 🔄 **v3 Interactive Parallel EPUB** — Phases 11-12 (in progress)
+- ✅ **v3 Interactive Parallel EPUB** — Phases 11-12 (shipped 2026-06-12)
 
 ## Phases
 
@@ -39,7 +39,7 @@ See: `.planning/milestones/v2/`
 ### v3 Interactive Parallel EPUB
 
 - [x] **Phase 11: HTML Generation Engine** - Fix CSS/DOCTYPE bugs and implement all interactive HTML rendering logic (completed 2026-06-12)
-- [ ] **Phase 12: CSS + CLI Integration** - Bundle interactive CSS, wire `--mode interactive` into CLI and builder
+- [x] **Phase 12: CSS + CLI Integration** - Bundle interactive CSS, wire `--mode interactive` into CLI and builder (completed 2026-06-12)
 
 ## Phase Details
 
@@ -83,7 +83,7 @@ See: `.planning/milestones/v2/`
 **Wave 1** *(both plans parallel — no file overlap)*
 
 - [x] 12-01-PLAN.md — Add _INTERACTIVE_CSS constant and wire into build_interactive(); update test_builder.py
-- [ ] 12-02-PLAN.md — CLI edits (VALID_MODES, remove --output-format), add assemble_interactive(), update test_cli.py
+- [x] 12-02-PLAN.md — CLI edits (VALID_MODES, remove --output-format), add assemble_interactive(), update test_cli.py
 
 ## Progress
 
@@ -102,4 +102,4 @@ See: `.planning/milestones/v2/`
 | 10.1. Fix SENT-06 | v2 | 1/1 | ✓ Complete | 2026-06-11 |
 | 10.2. Fix MONO-02 + MONO-04 | v2 | 1/1 | ✓ Complete | 2026-06-11 |
 | 11. HTML Generation Engine | v3 | 2/2 | Complete   | 2026-06-12 |
-| 12. CSS + CLI Integration | v3 | 1/2 | In Progress|  |
+| 12. CSS + CLI Integration | v3 | 2/2 | ✓ Complete | 2026-06-12 |
