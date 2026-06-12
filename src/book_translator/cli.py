@@ -109,7 +109,7 @@ def translate_cmd(
     input_file: Path = typer.Argument(..., help="Input file (.epub, .txt, .md, .markdown)"),
     source_lang: str = typer.Option(..., "--source-lang", "-s", help="Source language code (e.g. en)"),
     target_lang: str = typer.Option(..., "--target-lang", "-t", help="Target language code (e.g. ru)"),
-    model: str = typer.Option("gpt-5.4-mini", "--model", "-m", help="OpenAI model name"),
+    model: str = typer.Option("gpt-4o-mini", "--model", "-m", help="OpenAI model name"),
     api_key: str | None = typer.Option(None, "--api-key", help="OpenAI API key (overrides BOOK_TRANSLATOR_API_KEY / OPENAI_API_KEY)"),  # noqa: E501
     base_url: str | None = typer.Option(None, "--base-url", help="Custom OpenAI base URL", envvar="OPENAI_BASE_URL"),
     output: Path | None = typer.Option(None, "--output", "-o", help="Output EPUB path (default: cwd/<stem>.<target_lang>.epub)"),
