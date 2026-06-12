@@ -95,8 +95,8 @@ def build_pair_html(para: Paragraph) -> str:
         pairs = []
         pair_count = min(len(source_texts), len(para.sentence_translations))
         for i in range(pair_count):
-            pairs.append(f'<p class="bt-orig">{source_texts[i]}</p>')
-            pairs.append(f'<p class="bt-trans">{para.sentence_translations[i]}</p>')
+            pairs.append(f'<p class="bt-orig">{_html.escape(source_texts[i])}</p>')
+            pairs.append(f'<p class="bt-trans">{_html.escape(para.sentence_translations[i])}</p>')
         return f'<div class="bt-pair">\n' + '\n'.join(pairs) + f'\n</div>'
     
     trans_text = _html.escape(para.translation or "")
