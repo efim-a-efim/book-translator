@@ -94,6 +94,8 @@ class EpubBuilder:
 
             all_chapter_items.extend(chapter_items)
 
+            if not chapter_items:
+                continue  # skip empty chapters — no TOC entry
             if len(chapter_items) == 1:
                 toc_entries.append(
                     epub.Link(
@@ -177,6 +179,8 @@ class EpubBuilder:
 
             all_chapter_items.extend(chapter_items)
 
+            if not chapter_items:
+                continue  # skip empty chapters — no TOC entry
             if len(chapter_items) == 1:
                 toc_entries.append(
                     epub.Link(
@@ -255,6 +259,8 @@ class EpubBuilder:
 
             all_chapter_items.extend(chapter_items)
 
+            if not chapter_items:
+                continue  # skip empty chapters — no TOC entry
             if len(chapter_items) == 1:
                 toc_entries.append(
                     epub.Link(
