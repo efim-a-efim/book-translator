@@ -2,22 +2,22 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 10
-status: complete
-last_updated: "2026-06-04T21:30:00.000Z"
-last_activity: 2026-06-04 -- Phase 10 complete, all v2 phases done
+current_phase: 10.1
+status: completed
+last_updated: "2026-06-12T01:30:36.567Z"
+last_activity: 2026-06-04 -- All v2 phases verified
 progress:
-  total_phases: 4
+  total_phases: 7
   completed_phases: 4
-  total_plans: 4
-  completed_plans: 4
-  percent: 100
+  total_plans: 6
+  completed_plans: 6
+  percent: 57
 ---
 
 # Project State
 
 **Current Milestone:** v2 Translation Modes
-**Current Phase:** 10
+**Current Phase:** 10.1
 **Status:** Complete
 **Last Updated:** 2026-06-04
 
@@ -55,6 +55,13 @@ Last activity: 2026-06-04 -- All v2 phases verified
 - Completed 2026-06-05, status passed
 - 4 phases complete, 24/24 requirements satisfied
 - Audit: `.planning/v2-MILESTONE-AUDIT.md`
+
+## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 10.1 inserted after Phase 10 (URGENT): Fix SENT-06 — align sentence rendering with chunk-based translations
+- Phase 10.2 inserted after Phase 10.1 (URGENT): Fix MONO-02 + MONO-04 — output extension and heading order
 
 ## Quick Tasks Completed
 

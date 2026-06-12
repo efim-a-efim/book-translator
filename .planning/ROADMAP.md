@@ -106,7 +106,6 @@ Plans:
 **Requirements**: SENT-06
 **Depends on:** Phase 10
 **Plans:** 1 plan
-
 Plans:
 
 - [ ] 10.1-01-PLAN.md — Add sentence_chunk_texts to Paragraph, populate in translate_sentence(), fix build_pair_html()
