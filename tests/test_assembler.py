@@ -5,6 +5,8 @@ from bs4 import BeautifulSoup
 from book_translator.assembler.html_gen import (
     _inject_class,
     _prefix_ids,
+    _XHTML_TEMPLATE,
+    build_interactive_html,
     build_pair_html,
     wrap_chapter_xhtml,
 )
@@ -467,7 +469,6 @@ class TestDoctype:
     """INTR-02: _XHTML_TEMPLATE must use HTML5 DOCTYPE."""
 
     def test_doctype_is_html5(self):
-        from book_translator.assembler.html_gen import _XHTML_TEMPLATE  # noqa: PLC0415
         assert _XHTML_TEMPLATE.startswith("<!DOCTYPE html>"), (
             f"Expected _XHTML_TEMPLATE to start with '<!DOCTYPE html>', "
             f"got: {_XHTML_TEMPLATE[:80]!r}"
@@ -475,7 +476,7 @@ class TestDoctype:
 
 
 # ---------------------------------------------------------------------------
-# TestBuildInteractiveHtml — TDD RED (INTR-06 through INTR-12, INTR-18, INTR-19)
+# TestBuildInteractiveHtml — INTR-06 through INTR-12, INTR-18, INTR-19
 # ---------------------------------------------------------------------------
 
 
@@ -491,25 +492,18 @@ class TestBuildInteractiveHtml:
             kind=kind,
         )
 
-    def _import(self):
-        from book_translator.assembler.html_gen import build_interactive_html  # noqa: PLC0415
-        return build_interactive_html
-
     # Test 2: image pass-through (INTR-11)
     def test_image_passthrough(self):
-        build_interactive_html = self._import()
         para = self._make_para(kind="image", raw_html='<img src="fig.png"/>', text="", translation=None)
         assert build_interactive_html(para, "ru") == para.raw_html
 
     # Test 3: table pass-through (INTR-11)
     def test_table_passthrough(self):
-        build_interactive_html = self._import()
         para = self._make_para(kind="table", raw_html="<table><tr><td>x</td></tr></table>", text="", translation=None)
         assert build_interactive_html(para, "ru") == para.raw_html
 
     # Test 4: paragraph produces <details class="bt-interactive"> (INTR-06)
     def test_paragraph_details_structure(self):
-        build_interactive_html = self._import()
         para = self._make_para(kind="paragraph")
         result = build_interactive_html(para, "ru")
         soup = BeautifulSoup(result, "lxml")
@@ -526,14 +520,12 @@ class TestBuildInteractiveHtml:
 
     # Test 5: is_first=True adds open="open" (INTR-07)
     def test_is_first_adds_open_attr(self):
-        build_interactive_html = self._import()
         para = self._make_para(kind="paragraph")
         result = build_interactive_html(para, "ru", is_first=True)
         assert 'open="open"' in result
 
     # Test 6: is_first=False (default) has no open attr (INTR-07)
     def test_is_first_false_no_open_attr(self):
-        build_interactive_html = self._import()
         para = self._make_para(kind="paragraph")
         result = build_interactive_html(para, "ru", is_first=False)
         soup = BeautifulSoup(result, "lxml")
@@ -543,7 +535,6 @@ class TestBuildInteractiveHtml:
 
     # Test 7: caption kind produces <details> (INTR-08)
     def test_caption_details_structure(self):
-        build_interactive_html = self._import()
         para = self._make_para(kind="caption")
         result = build_interactive_html(para, "ru")
         soup = BeautifulSoup(result, "lxml")
@@ -553,7 +544,6 @@ class TestBuildInteractiveHtml:
 
     # Test 8: footnote kind produces <details> (INTR-08)
     def test_footnote_details_structure(self):
-        build_interactive_html = self._import()
         para = self._make_para(kind="footnote")
         result = build_interactive_html(para, "ru")
         soup = BeautifulSoup(result, "lxml")
@@ -563,7 +553,6 @@ class TestBuildInteractiveHtml:
 
     # Test 9: heading kind produces <h2> with span, no <details> (INTR-09)
     def test_heading_h2_with_span_no_details(self):
-        build_interactive_html = self._import()
         para = self._make_para(kind="heading", raw_html="<h2>Chapter One</h2>", text="Chapter One", translation="Глава Один")
         result = build_interactive_html(para, "ru")
         soup = BeautifulSoup(result, "lxml")
@@ -577,7 +566,6 @@ class TestBuildInteractiveHtml:
 
     # Test 10: ID prefixing confirms _prefix_ids ran (INTR-18)
     def test_id_prefixed_in_summary(self):
-        build_interactive_html = self._import()
         para = self._make_para(kind="paragraph", raw_html='<p id="foo">Text</p>')
         result = build_interactive_html(para, "ru")
         soup = BeautifulSoup(result, "lxml")
@@ -585,7 +573,6 @@ class TestBuildInteractiveHtml:
 
     # Test 11: both summary and translation present (INTR-12)
     def test_both_original_and_translation_present(self):
-        build_interactive_html = self._import()
         para = self._make_para(kind="paragraph", raw_html="<p>Hello</p>", translation="Привет")
         result = build_interactive_html(para, "ru")
         soup = BeautifulSoup(result, "lxml")
