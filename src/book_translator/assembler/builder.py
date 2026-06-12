@@ -157,7 +157,8 @@ class EpubBuilder:
                 if para.kind in ("image", "table"):
                     content_parts.append(para.raw_html)
                 elif para.kind == "heading":
-                    content_parts.append(f"<h2>{_html.escape(para.text)}</h2>")
+                    heading_text = para.translation if para.translation else para.text
+                    content_parts.append(f"<h2>{_html.escape(heading_text)}</h2>")
                 elif para.translation:
                     # Only translation, no original
                     content_parts.append(f"<p>{_html.escape(para.translation)}</p>")
