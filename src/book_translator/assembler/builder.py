@@ -197,8 +197,7 @@ class EpubBuilder:
                     # Only translation, no original
                     content_parts.append(f"<p>{_html.escape(para.translation)}</p>")
 
-            body_html = "\n".join(content_parts)
-            parts = split_chapter_parts([body_html], title_html, chapter_num)
+            parts = split_chapter_parts(content_parts, title_html, chapter_num)
 
             chapter_items: list[epub.EpubHtml] = []
             for part_html, filename in parts:
