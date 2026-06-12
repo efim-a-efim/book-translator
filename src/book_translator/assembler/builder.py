@@ -76,7 +76,11 @@ class EpubBuilder:
 
         for chapter_num, chapter in enumerate(doc.chapters, 1):
             title_html = f"<h1>{_html.escape(chapter.title)}</h1>" if chapter.title else ""
-            pairs = [build_pair_html(p) for p in chapter.paragraphs]
+            pairs = [
+                build_pair_html(p)
+                for p in chapter.paragraphs
+                if not (p.kind == "heading" and p.text == chapter.title)
+            ]
             parts = split_chapter_parts(pairs, title_html, chapter_num)
 
             chapter_items: list[epub.EpubHtml] = []
@@ -148,6 +152,8 @@ class EpubBuilder:
             title_html = f"<h1>{_html.escape(chapter.title)}</h1>" if chapter.title else ""
             content_parts = []
             for para in chapter.paragraphs:
+                if para.kind == "heading" and para.text == chapter.title:
+                    continue  # already rendered in title_html
                 if para.kind in ("image", "table"):
                     content_parts.append(para.raw_html)
                 elif para.kind == "heading":
@@ -226,6 +232,8 @@ class EpubBuilder:
             first_details_emitted = False
 
             for para in chapter.paragraphs:
+                if para.kind == "heading" and para.text == chapter.title:
+                    continue  # already rendered in title_html
                 is_first = False
                 if para.kind not in _PASS_THROUGH_KINDS and para.kind != "heading":
                     if not first_details_emitted:
