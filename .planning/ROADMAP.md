@@ -1,122 +1,53 @@
-# Roadmap: Book Translator — v2 Translation Modes
+# Roadmap: Book Translator
 
-**Milestone:** v2 Translation Modes
-**Created:** 2026-06-04
-**Granularity:** Standard (focused additive milestone)
-**Phases continue from v1** (which ended at Phase 6).
+## Milestones
+
+- ✅ **v1 MVP** — Phases 1-6 (shipped 2026-06-03)
+- ✅ **v2 Translation Modes** — Phases 7-10.2 (shipped 2026-06-12)
 
 ## Phases
 
-- [ ] **Phase 7: Mode Selection & CLI Dispatch** — Add `--mode` flag, cross-flag validation, dispatcher to mode-specific pipelines
-- [ ] **Phase 8: Per-Sentence Mode** — Punkt-based sentence chunker, token-budget batching, structured AI output
-- [ ] **Phase 9: Monolingual Mode** — Translated-only output in EPUB/TXT/MD formats
-- [ ] **Phase 10: Backwards Compatibility Verification** — Confirm v1 invocations and APIs unchanged
+<details>
+<summary>✅ v1 MVP (Phases 1-6) — SHIPPED 2026-06-03</summary>
 
-## Phase Details
+- [x] Phase 1: Foundation — BookDocument IR, JobStore, pyproject scaffold
+- [x] Phase 2: Parsers — EPUB/TXT/MD parsers, DRM detection, ZIP guard
+- [x] Phase 3: Translation Engine — AsyncOpenAI client, chunker, retry/backoff, semaphore
+- [x] Phase 4: EPUB Assembler — Bilingual EPUB, paragraph pairs, chapter splitter
+- [x] Phase 5: CLI — Typer CLI, translate/list/cleanup commands, end-to-end wiring
+- [x] Phase 6: Polish & Release — README, LICENSE, CI (GitHub Actions), pyproject metadata
 
-### Phase 7: Mode Selection & CLI Dispatch
+See: `.planning/milestones/v1/`
 
-**Goal**: User can choose translation mode via CLI; invalid flag combinations are rejected with clear errors; default behavior unchanged.
-**Depends on**: v1 (Phase 6 complete)
-**Requirements**: MODE-01, MODE-02, MODE-03, MODE-04, MODE-05
-**Success Criteria** (what must be TRUE):
+</details>
 
-  1. `--mode {per-page,per-sentence,monolingual}` parses and routes to the correct pipeline
-  2. Omitting `--mode` runs the v1 per-page path unchanged
-  3. Invalid `--mode` value exits code 2 with a message listing valid values
-  4. Using `--output-format` outside `monolingual` exits code 2 with a clear message
-  5. Using `--batch-token-budget` outside `per-sentence` exits code 2 with a clear message
+<details>
+<summary>✅ v2 Translation Modes (Phases 7-10.2) — SHIPPED 2026-06-12</summary>
 
-**Plans**: 2 plans
-Plans:
-**Wave 1**
+- [x] Phase 7: Mode Selection & CLI Dispatch (2/2 plans) — completed 2026-06-04
+- [x] Phase 8: Per-Sentence Mode (2/2 plans) — completed 2026-06-04
+- [x] Phase 9: Monolingual Mode (1/1 plan) — completed 2026-06-04
+- [x] Phase 10: Backwards Compatibility Verification (1/1 plan) — completed 2026-06-04
+- [x] Phase 10.1: Fix SENT-06 — sentence rendering alignment (1/1 plan) — completed 2026-06-11
+- [x] Phase 10.2: Fix MONO-02 + MONO-04 — extension and heading order (1/1 plan) — completed 2026-06-11
 
-- [ ] 07-01-PLAN.md - Mode parsing, cross-flag validation, and future-mode pre-run blocking
+See: `.planning/milestones/v2/`
 
-**Wave 2** *(blocked on Wave 1 completion)*
-
-- [ ] 07-02-PLAN.md - Per-page dispatch equivalence and safe additive mode metadata
-
-### Phase 8: Per-Sentence Mode
-
-**Goal**: Bilingual per-sentence output produced via Punkt tokenization, chunk-merging rules, and batched structured-output AI requests.
-**Depends on**: Phase 7 (mode dispatch in place)
-**Requirements**: SENT-01, SENT-02, SENT-03, SENT-04, SENT-05, SENT-06, SENT-07, SENT-08, SENT-09, SENT-10
-**Success Criteria** (what must be TRUE):
-
-  1. A paragraph is split into ≤3-sentence chunks using Punkt; ≤4-word sentences merge into the preceding chunk
-  2. Headers/sub-headers are emitted as single whole chunks (never sentence-split)
-  3. Punkt data is auto-downloaded on first use if missing
-  4. A single AI request packs multiple chunks up to `--batch-token-budget` (default 4000) and returns chunk-ID-keyed structured output that round-trips to the right chunks
-  5. Per-sentence EPUB renders each chunk's original immediately followed by its translation
-  6. A malformed/failed batch retries per existing engine policy; persistent failure surfaces a clear error and retains the run directory
-
-**Plans**: TBD
-
-### Phase 9: Monolingual Mode
-
-**Goal**: User can produce translated-only output in EPUB, TXT, or Markdown — reusing existing translation engine.
-**Depends on**: Phase 7 (mode dispatch in place)
-**Requirements**: MONO-01, MONO-02, MONO-03, MONO-04, MONO-05, MONO-06, MONO-07
-**Success Criteria** (what must be TRUE):
-
-  1. `--mode monolingual` produces output containing only the translation (no source text anywhere)
-  2. `--output-format {epub,txt,md}` selects the writer; default is `epub`
-  3. Monolingual EPUB renders chapters and headings cleanly with no paragraph pairing or source interleaving
-  4. Monolingual TXT preserves chapter/heading boundaries with clear textual separators
-  5. Monolingual Markdown preserves chapter/heading structure as Markdown headings
-  6. Translation uses the existing engine's chunking and retry behavior (no engine fork)
-
-**Plans**: TBD
-
-### Phase 10: Backwards Compatibility Verification
-
-**Goal**: Prove v2 changes did not break any v1 caller, API, or output bit-equivalence.
-**Depends on**: Phases 7, 8, 9
-**Requirements**: COMPAT-01, COMPAT-02
-**Success Criteria** (what must be TRUE):
-
-  1. The full v1 test suite (120 tests) passes unchanged
-  2. A v1 CLI invocation (no `--mode`) on a fixture book produces output byte-identical to a v1 baseline
-  3. Public APIs `BookDocument`, `JobStore`, and translator entry points retain their v1 signatures (additions only, no breaking changes)
-
-**Plans**: TBD
+</details>
 
 ## Progress
 
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 7. Mode Selection & CLI Dispatch | 2/2 | ✓ Complete | 2026-06-04 |
-| 8. Per-Sentence Mode | 0/0 | ✓ Complete | 2026-06-04 |
-| 9. Monolingual Mode | 0/0 | ✓ Complete | 2026-06-04 |
-| 10. Backwards Compatibility Verification | 1/1 | ✓ Complete | 2026-06-04 |
-
-## Coverage
-
-- v2 requirements total: 24 (MODE×5 + SENT×10 + MONO×7 + COMPAT×2)
-- Mapped: 24/24 ✓
-- Orphans: 0
-
----
-*Created 2026-06-04 by gsd-roadmapper.*
-
-### Phase 10.1: Fix SENT-06: align sentence rendering with chunk-based translations (INSERTED)
-
-**Goal:** Per-sentence EPUB correctly pairs each chunk's original text with its translation by carrying chunk text through the data model instead of re-splitting at render time.
-**Requirements**: SENT-06
-**Depends on:** Phase 10
-**Plans:** 1 plan
-Plans:
-
-- [x] 10.1-01-PLAN.md — Add sentence_chunk_texts to Paragraph, populate in translate_sentence(), fix build_pair_html()
-
-### Phase 10.2: Fix MONO-02 + MONO-04: output extension and heading order (INSERTED)
-
-**Goal:** Fix two confirmed monolingual mode bugs: wrong output file extension (MONO-02) and heading-as-paragraph rendering in EPUB (MONO-04).
-**Requirements**: MONO-02, MONO-04
-**Depends on:** Phase 10
-**Plans:** 1 plan
-
-Plans:
-
-- [x] 10.2-01-PLAN.md — Fix MONO-04 (builder.py elif order) + Fix MONO-02 (cli.py extension derivation) + full suite green
+| Phase | Milestone | Plans Complete | Status | Completed |
+|-------|-----------|----------------|--------|-----------|
+| 1. Foundation | v1 | 3/3 | ✓ Complete | 2026-05-20 |
+| 2. Parsers | v1 | 3/3 | ✓ Complete | 2026-05-25 |
+| 3. Translation Engine | v1 | 3/3 | ✓ Complete | 2026-05-28 |
+| 4. EPUB Assembler | v1 | 3/3 | ✓ Complete | 2026-06-01 |
+| 5. CLI | v1 | 4/4 | ✓ Complete | 2026-06-03 |
+| 6. Polish & Release | v1 | 4/4 | ✓ Complete | 2026-06-03 |
+| 7. Mode Selection & CLI Dispatch | v2 | 2/2 | ✓ Complete | 2026-06-04 |
+| 8. Per-Sentence Mode | v2 | 2/2 | ✓ Complete | 2026-06-04 |
+| 9. Monolingual Mode | v2 | 1/1 | ✓ Complete | 2026-06-04 |
+| 10. Backwards Compatibility | v2 | 1/1 | ✓ Complete | 2026-06-04 |
+| 10.1. Fix SENT-06 | v2 | 1/1 | ✓ Complete | 2026-06-11 |
+| 10.2. Fix MONO-02 + MONO-04 | v2 | 1/1 | ✓ Complete | 2026-06-11 |
