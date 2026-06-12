@@ -1005,3 +1005,68 @@ def test_mode_metadata_no_secret_leakage(runner, tmp_store, sample_txt):
     assert "super-secret-key" not in meta_text
     assert "output_format" not in meta_text
     assert "batch_token_budget" not in meta_text
+
+
+# --- MONO-02: output extension derivation tests ---
+
+
+def _run_monolingual_and_capture_output_dest(runner, tmp_store, sample_txt, extra_args):
+    """Helper: run monolingual translate with mocked pipeline, return output_dest string."""
+    captured = {}
+    mock_doc = MagicMock()
+    mock_doc.to_json.return_value = '{"title":"T","author":"A","source_lang":"en","chapters":[]}'
+    mock_doc.chapters = []
+
+    def _fake_assemble_monolingual(job_dir, target_lang, output_format="epub"):
+        out = job_dir / "dst" / f"out.{target_lang}.{output_format}"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_bytes(b"x")
+        return out
+
+    with (
+        patch("book_translator.cli._parse_file", return_value=mock_doc),
+        patch("book_translator.cli.translate", new_callable=AsyncMock),
+        patch("book_translator.cli.assemble_monolingual", side_effect=_fake_assemble_monolingual) as mock_asm,
+    ):
+        result = runner.invoke(
+            app,
+            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--mode", "monolingual", "--api-key", "test-key"] + extra_args,
+        )
+        captured["result"] = result
+        captured["mock_asm"] = mock_asm
+    return captured
+
+
+def test_monolingual_txt_output_gets_txt_extension(runner, tmp_store, sample_txt):
+    """--mode monolingual --output-format txt produces default output path ending in .txt (MONO-02)."""
+    captured = _run_monolingual_and_capture_output_dest(
+        runner, tmp_store, sample_txt, ["--output-format", "txt"]
+    )
+    result = captured["result"]
+    assert result.exit_code == 0, result.output
+    assert "Done." in result.output
+    # The output line is "Done. Output: <path>"
+    output_line = [line for line in result.output.splitlines() if "Done." in line][0]
+    assert output_line.endswith(".txt"), f"Expected .txt extension, got: {output_line}"
+
+
+def test_monolingual_md_output_gets_md_extension(runner, tmp_store, sample_txt):
+    """--mode monolingual --output-format md produces default output path ending in .md (MONO-02)."""
+    captured = _run_monolingual_and_capture_output_dest(
+        runner, tmp_store, sample_txt, ["--output-format", "md"]
+    )
+    result = captured["result"]
+    assert result.exit_code == 0, result.output
+    output_line = [line for line in result.output.splitlines() if "Done." in line][0]
+    assert output_line.endswith(".md"), f"Expected .md extension, got: {output_line}"
+
+
+def test_default_monolingual_output_gets_epub_extension(runner, tmp_store, sample_txt):
+    """--mode monolingual without --output-format produces default output path ending in .epub (MONO-02)."""
+    captured = _run_monolingual_and_capture_output_dest(
+        runner, tmp_store, sample_txt, []
+    )
+    result = captured["result"]
+    assert result.exit_code == 0, result.output
+    output_line = [line for line in result.output.splitlines() if "Done." in line][0]
+    assert output_line.endswith(".epub"), f"Expected .epub extension, got: {output_line}"

@@ -27,6 +27,7 @@ SUPPORTED_SUFFIXES = {".epub", ".txt", ".md", ".markdown"}
 
 VALID_MODES = {"per-page", "per-sentence", "monolingual"}
 VALID_OUTPUT_FORMATS = {"epub", "txt", "md"}
+FORMAT_TO_EXT: dict[str, str] = {"epub": ".epub", "txt": ".txt", "md": ".md"}
 
 app = typer.Typer(add_completion=False, help="AI-powered bilingual book translator.")
 
@@ -186,7 +187,11 @@ def translate_cmd(
     stem = input_file.stem
     if stem.endswith(f".{source_lang}"):
         stem = stem[: -(len(source_lang) + 1)]
-    default_output = Path.cwd() / f"{stem}.{target_lang}.epub"
+    if effective_mode == "monolingual":
+        _ext = FORMAT_TO_EXT.get(output_format or "epub", ".epub")
+    else:
+        _ext = ".epub"
+    default_output = Path.cwd() / f"{stem}.{target_lang}{_ext}"
     output_dest = output if output is not None else default_output
 
     # Step 5 — Create run (D-02)
