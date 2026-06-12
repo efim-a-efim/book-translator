@@ -348,16 +348,18 @@ No framework version changes. All decisions are project-specific. [ASSUMED]
 | A4 | `_assemble_monolingual_txt` and `_assemble_monolingual_md` are dead code after format removal | Common Pitfalls | Dead code only, no runtime impact |
 | A5 | Existing test `test_output_format_rejected_without_monolingual` et al. must be updated | Common Pitfalls | Test suite red after changes |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should `assemble_monolingual()` internal format branches be removed?**
    - What we know: CONTEXT.md marks this as Claude's discretion
    - What's unclear: Whether simplifying reduces risk or adds risk
    - Recommendation: Simplify — remove `output_format` param entirely from `assemble_monolingual()` and its private helpers `_assemble_monolingual_txt`/`_assemble_monolingual_md`. Reduces dead code; no caller passes non-epub values after CLI change.
+   - RESOLVED: Yes — 12-02 Task 1 explicitly simplifies `assemble_monolingual()` by removing format branches.
 
 2. **Interactive mode output path derivation — should it mirror per-page exactly?**
    - What we know: Both produce `.epub`, both use `assemble*()` wrappers
    - Recommendation: Yes — `_ext = ".epub"` for all modes after `--output-format` removal; `default_output` derivation simplifies to one line.
+   - RESOLVED: Yes — 12-02 Task 2 sets `_ext = ".epub"` unconditionally.
 
 ## Environment Availability
 
