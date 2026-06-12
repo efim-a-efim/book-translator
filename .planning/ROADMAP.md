@@ -73,13 +73,17 @@ See: `.planning/milestones/v2/`
 **Success Criteria** (what must be TRUE):
 
   1. `translate --mode interactive input.epub` completes without error and produces an EPUB file
-  2. `translate --mode interactive --output-format txt` exits with code 2 and a clear error message
+  2. `translate --mode interactive --output-format txt` exits with code 2 (unknown option) — `--output-format` removed entirely per D-02
   3. `translate` (no `--mode`) defaults to per-page behavior — no behavior change from v2
   4. The generated EPUB contains no `<script>` tags; CSS is bundled in `style.css` as UTF-8 bytes
   5. The disclosure triangle is hidden on both WebKit and non-WebKit renderers; heading translation span is visually subordinate (smaller, italic, reduced opacity)
 
-**Plans**: TBD
-**UI hint**: yes
+**Plans**: 2 plans
+
+**Wave 1** *(both plans parallel — no file overlap)*
+
+- [ ] 12-01-PLAN.md — Add _INTERACTIVE_CSS constant and wire into build_interactive(); update test_builder.py
+- [ ] 12-02-PLAN.md — CLI edits (VALID_MODES, remove --output-format), add assemble_interactive(), update test_cli.py
 
 ## Progress
 
@@ -98,4 +102,4 @@ See: `.planning/milestones/v2/`
 | 10.1. Fix SENT-06 | v2 | 1/1 | ✓ Complete | 2026-06-11 |
 | 10.2. Fix MONO-02 + MONO-04 | v2 | 1/1 | ✓ Complete | 2026-06-11 |
 | 11. HTML Generation Engine | v3 | 2/2 | Complete   | 2026-06-12 |
-| 12. CSS + CLI Integration | v3 | 0/? | Not started | - |
+| 12. CSS + CLI Integration | v3 | 0/2 | Not started | - |
