@@ -189,3 +189,67 @@ class TestInteractiveCSSConstantExists:
         css_items = [i for i in book.get_items() if getattr(i, "media_type", "") == "text/css"]
         assert css_items, "No CSS item found"
         assert css_items[0].content != b"", "CSS content must not be empty stub"
+
+
+# ---------------------------------------------------------------------------
+# Interactive CSS content assertions (Task 2 — TestInteractiveCSSContent)
+# ---------------------------------------------------------------------------
+
+
+def _get_css_item(book):
+    """Return the CSS EpubItem from a built book, or raise."""
+    css_items = [i for i in book.get_items() if getattr(i, "media_type", "") == "text/css"]
+    assert css_items, "No CSS item found in book"
+    return css_items[0]
+
+
+class TestInteractiveCSSContent:
+    # ---- Constant-level assertions ------------------------------------------
+
+    def test_interactive_css_constant_no_raw_arrow_chars(self):
+        """No raw Unicode arrow chars in constant — CSS hex escapes only (INTR-15)."""
+        assert chr(0x25B6) not in _INTERACTIVE_CSS
+        assert chr(0x25BC) not in _INTERACTIVE_CSS
+
+    def test_interactive_css_constant_has_all_triangle_hiding_rules(self):
+        """All three disclosure-triangle-hiding rules present (INTR-14, D-07)."""
+        assert "list-style: none" in _INTERACTIVE_CSS
+        assert "::-webkit-details-marker" in _INTERACTIVE_CSS
+        assert "::marker" in _INTERACTIVE_CSS
+
+    def test_interactive_css_constant_heading_span_styles(self):
+        """Heading span visually subordinate: display:block, font-size:0.6em, opacity:0.5, font-style:italic (D-06, INTR-17)."""
+        assert "display: block" in _INTERACTIVE_CSS
+        assert "font-size: 0.6em" in _INTERACTIVE_CSS
+        assert "opacity: 0.5" in _INTERACTIVE_CSS
+        assert "font-style: italic" in _INTERACTIVE_CSS
+
+    # ---- build_interactive() output assertions -------------------------------
+
+    def test_interactive_css_bytes_in_build_interactive(self):
+        """build_interactive() CSS item contains correct bytes (INTR-16)."""
+        doc = _make_doc()
+        book = EpubBuilder().build_interactive(doc, "ru", book_id="test-id")
+        css_item = _get_css_item(book)
+        assert isinstance(css_item.content, bytes), "CSS content must be bytes (INTR-16)"
+        assert b"\\25B6" in css_item.content, "CSS escape \\25B6 must be present in bytes"
+        assert b"list-style: none" in css_item.content, "Triangle-hiding rule missing (INTR-14)"
+        assert b"display: none" in css_item.content, "display:none rule missing (INTR-14)"
+        assert b"font-size: 0.6em" in css_item.content, "Heading span font-size missing (INTR-17)"
+        assert b"opacity: 0.5" in css_item.content, "Heading span opacity missing (INTR-17)"
+
+    # ---- Isolation: non-interactive builds must NOT receive interactive CSS --
+
+    def test_build_does_not_include_interactive_css(self):
+        """build() CSS item is empty — _INTERACTIVE_CSS must not propagate."""
+        doc = _make_doc()
+        book = EpubBuilder().build(doc, "ru", book_id="test-id")
+        css_item = _get_css_item(book)
+        assert css_item.content == b"", "build() must produce empty CSS (no interactive styles)"
+
+    def test_build_monolingual_does_not_include_interactive_css(self):
+        """build_monolingual() CSS item is empty — _INTERACTIVE_CSS must not propagate."""
+        doc = _make_doc()
+        book = EpubBuilder().build_monolingual(doc, "ru", book_id="test-id")
+        css_item = _get_css_item(book)
+        assert css_item.content == b"", "build_monolingual() must produce empty CSS (no interactive styles)"
