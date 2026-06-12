@@ -85,8 +85,11 @@ def build_pair_html(para: Paragraph) -> str:
     if para.kind in _PASS_THROUGH_KINDS:
         return para.raw_html
 
+    # _prefix_ids is called unconditionally to consume the id namespace for this
+    # paragraph (prevents collisions even in per-sentence mode where orig_html
+    # is not emitted directly — WR-05).
     orig_html = _inject_class(_prefix_ids(para.raw_html), "bt-orig")
-    
+
     # Per-sentence mode: render each sentence pair
     if para.sentence_translations is not None:
         # Use sentence_chunk_texts when available (primary path); fall back to regex splitting for old data
