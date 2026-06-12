@@ -192,7 +192,7 @@
   - Set appropriate `xml:lang` attributes
 
 ### 7. Special Characters and Ligatures
-- **What goes wrong:** Source contains en-dash `–`, smart quotes `"…"`, non-breaking spaces `\u00a0`. These survive parsing but serializer outputs them as numeric entities or drops them if XHTML is ASCII-escaped.
+- **What goes wrong:** Source contains en-dash `–`, smart quotes `"…"`, non-breaking spaces ` `. These survive parsing but serializer outputs them as numeric entities or drops them if XHTML is ASCII-escaped.
 - **Prevention:** Force UTF-8 serialization; do not escape characters above U+007F.
 
 ---
@@ -270,7 +270,7 @@
 - **Prevention:** Open all text files with `encoding='utf-8-sig'`; strip BOM before XML parse.
 
 ### 2. Surrogate Pairs in Python Strings
-- **What goes wrong:** Some emoji or rare CJK characters stored as surrogate pairs (`\ud83d\ude00`) in badly-encoded sources. Python string operations crash or corrupt output.
+- **What goes wrong:** Some emoji or rare CJK characters stored as surrogate pairs (`😀`) in badly-encoded sources. Python string operations crash or corrupt output.
 - **Prevention:** Filter surrogates: `text.encode('utf-8', errors='surrogatepass').decode('utf-8', errors='replace')`.
 
 ### 3. Cyrillic Normalization (NFC vs NFD)
@@ -330,3 +330,307 @@
 - Python zipfile path traversal: https://docs.python.org/3/library/zipfile.html (HIGH confidence)
 
 > **Note:** Web search unavailable for this research session (model limitation). Findings based on domain expertise, known format specifications, and training knowledge of common failure modes in EPUB/FB2 processing and LLM API usage. Verify critical pitfalls against current library changelogs before implementation.
+
+---
+
+## Interactive Mode: `<details>`/`<summary>` in EPUB3
+
+**Scope:** v3 milestone — `--mode interactive` CSS-only reveal-on-tap using `<details>`/`<summary>`.
+**Researched:** 2026-06-12
+**Confidence:** MEDIUM (web search + domain expertise; reader-specific behavior varies)
+
+The core tension: `<details>`/`<summary>` are HTML5 interactive content elements that depend on browser UA behaviour for their open/closed state. EPUB3 mandates the **XML serialization of HTML5** (XHTML5), not the HTML serialization. This creates three distinct risk layers: (1) XML validity, (2) reading-system UA stylesheet conflicts, (3) silent fallback to "always open" in systems that do not implement the interactive model. The existing `_XHTML_TEMPLATE` in `html_gen.py` uses XHTML 1.1 DOCTYPE which is EPUB2-era and must be replaced.
+
+---
+
+## XHTML vs HTML5 Compatibility
+
+### Pitfall 1: XHTML 1.1 DOCTYPE blocks `<details>` — must upgrade to HTML5 DOCTYPE
+
+**What goes wrong:** The current template uses `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" ...>`. XHTML 1.1 was frozen before HTML5; its DTD does not declare `<details>` or `<summary>`. An XML validator consuming the DOCTYPE URI will report `element "details" not allowed here`. More critically, the EPUB3 spec does not use XHTML 1.1 — it mandates the **XML serialization of HTML5 (XHTML5)**, which is a different document type.
+
+**Why it happens:** The existing codebase was written for EPUB2-compatible output. XHTML 1.1 DOCTYPE was correct for EPUB2; it is wrong for EPUB3 with HTML5 elements.
+
+**Consequences:** epubcheck RSC-005 schema errors when `<details>` is present. Some readers use the DOCTYPE to choose a rendering mode; XHTML 1.1 + HTML5 elements triggers quirks behaviour.
+
+**Prevention:**
+- Replace the DOCTYPE in `_XHTML_TEMPLATE` with `<!DOCTYPE html>` (no public/system identifier). This is correct for EPUB3 XHTML5 — the IDPF forum and polyglot spec confirm no DTD is needed.
+- Keep `xmlns="http://www.w3.org/1999/xhtml"` on the `<html>` element — required for XHTML5.
+- Add both `lang=` and `xml:lang=` on `<html>` for XHTML5 compliance.
+
+**epubcheck status:** `<details>` and `<summary>` are in the EPUB3 Content Documents RelaxNG schema (derived from HTML5). They pass epubcheck when the document carries `<!DOCTYPE html>` and media type `application/xhtml+xml`. No `epub:type` attribute is required.
+
+**Phase:** v3 Phase 1. Must fix before any `<details>` HTML is written.
+
+---
+
+### Pitfall 2: `<details>` and `<summary>` must never be self-closing
+
+**What goes wrong:** In XHTML (XML), a non-void element with no content may be written `<details/>`. The HTML rendering algorithm treats `<details/>` as an open tag with no close — everything after it becomes its content. If a template or string-builder produces `<details/>` for an empty block, readers with an HTML parser layer will swallow subsequent paragraphs silently.
+
+**Prevention:**
+- Always emit `<details>...</details>` and `<summary>...</summary>` with explicit close tags.
+- The existing `build_pair_html` assembles HTML via f-strings, so this is a template discipline issue. Add a test asserting the output never contains `<details/>` or `<summary/>`.
+
+**Phase:** v3 Phase 1.
+
+---
+
+### Pitfall 3: BeautifulSoup `lxml` HTML parser mutates `<details>` structure
+
+**What goes wrong:** `_inject_class` and `_prefix_ids` in `html_gen.py` use `BeautifulSoup(html, "lxml")` — the lxml HTML parser. The lxml HTML parser applies HTML4 block/inline rules. `<details>` is a block-level element; `<p>` cannot contain block elements under HTML4 rules. If a `<details>`-wrapped snippet were ever passed back through these functions, the parser would auto-close the `<p>` before the `<details>`, breaking structure silently. Older lxml versions (pre-4.9) may also strip `<details>` as unknown.
+
+**Consequences:** Output HTML silently restructured; CSS selectors targeting `.bt-pair > details` break; structure tests pass on the pre-BS4 string but fail in the actual reader DOM.
+
+**Prevention:**
+- `_inject_class` and `_prefix_ids` operate on `para.raw_html` (source paragraph-level HTML: `<p>`, `<h1>`, etc.). The `<details>` wrapper is assembled in `build_pair_html` AFTER those calls. Keep this order strict — never pass a `<details>`-wrapped fragment into any BeautifulSoup round-trip.
+- If any future code path must parse a `<details>` fragment, use `BeautifulSoup(html, "lxml-xml")` (the XML parser) to preserve structure.
+
+**Phase:** v3 Phase 1. Architectural constraint on wrapping order.
+
+---
+
+## CSS Override Risks
+
+### Pitfall 4: Reading system UA stylesheet hides or removes the disclosure triangle
+
+**What goes wrong:** The HTML5 UA stylesheet for `<summary>` is roughly:
+```css
+summary { display: list-item; list-style: disclosure-closed inside; }
+details[open] > summary { list-style-type: disclosure-open; }
+```
+EPUB reading systems inject their own UA stylesheets on top of EPUB CSS. Behaviour varies:
+
+- **Kobo e-ink:** Known to reset `list-style` broadly. The `disclosure-closed` triangle disappears, leaving no visual cue that `<summary>` is tappable.
+- **Apple Books (iOS/macOS):** Good WebKit support; `<details>` toggle works. Books overrides font/line-height — test spacing carefully.
+- **Kindle app (Android/iOS):** WebKit-based; toggle usually works. Disclosure triangle rendering inconsistent.
+- **Kindle e-ink hardware:** Does NOT support `<details>` interactivity. Renders permanently open (graceful fallback: both texts visible). Expected behaviour per PROJECT.md.
+
+**Prevention:**
+- Use `summary::before` with explicit `content` to inject a custom indicator rather than relying on UA `disclosure-*` list-style types.
+- Cross-browser pattern:
+  ```css
+  summary { list-style: none; }
+  summary::-webkit-details-marker { display: none; }
+  summary::before { content: "\25B8  "; }
+  details[open] > summary::before { content: "\25BE  "; }
+  ```
+- Both `list-style: none` AND `-webkit-details-marker: none` are required. Chromium-based renderers (many Android reading apps) ignore `list-style: none` on `<summary>` — the `-webkit-` rule is mandatory for those engines.
+- Use Unicode escape sequences (`\25B8`) rather than literal Unicode characters in CSS `content:` values (see Pitfall 7 on encoding).
+
+**Phase:** v3 Phase 2 (CSS authoring). HIGH risk on Kobo e-ink; MEDIUM on mobile.
+
+---
+
+### Pitfall 5: `details[open]` CSS selector not supported in older reading system firmware
+
+**What goes wrong:** Styling the open state requires the attribute selector `details[open]`. Pre-2019 firmware on e-ink Kobo and older Kindle firmware versions have partial CSS attribute selector support. The `[open]` selector may not apply even when the element is opened.
+
+**Consequences:** Custom open-state styling (changed arrow, different background) never appears. Usability is reduced but not broken — content is still readable.
+
+**Prevention:**
+- Treat `details[open]` CSS as progressive enhancement. Core readability must work without it.
+- The always-open graceful fallback (PROJECT.md) means content is never hidden-and-unreachable.
+
+**Phase:** v3 Phase 2.
+
+---
+
+### Pitfall 6: Reading system `p { ... !important }` overrides `<summary>` layout
+
+**What goes wrong:** When `<summary>` contains `<p class="bt-orig">...</p>`, reading system CSS like `p { margin: 0.5em 0 !important; }` overrides any author margin, potentially collapsing summary visual size. Block-level `<p>` inside `<summary>` also triggers potential parser reflow issues in some engines.
+
+**Prevention:**
+- Target `summary.bt-summary` with `display: block` and explicit padding.
+- Consider rendering original text as inline content directly in `<summary>` (no inner `<p>` tag), or use `<span class="bt-orig-inline">`. This avoids the block-model conflict.
+- If `<p>` must be inside `<summary>`: `summary p { margin: 0; padding: 0.25em 0; }` with sufficient specificity.
+
+**Phase:** v3 Phase 2.
+
+---
+
+## ebooklib Gotchas
+
+### Pitfall 7: CSS content with Unicode arrows corrupted if passed as `str` not `bytes`
+
+**What goes wrong:** `ebooklib.epub.EpubItem` stores content as `bytes` internally. If a Python `str` is passed for `content=`, ebooklib accepts it in some versions but `zipfile.writestr()` (called inside `write_epub()`) requires `bytes`. When ebooklib implicitly encodes, it may use `latin-1` (Python default codec) rather than UTF-8. The Unicode arrow characters ▸ (`U+25B8`, UTF-8: `e2 96 b8`) and ▾ (`U+25BE`, UTF-8: `e2 96 be`) are above U+00FF and cannot be encoded in latin-1 — they corrupt silently or raise `UnicodeEncodeError`.
+
+**Prevention:**
+```python
+css_content = "summary::before { content: '\\25B8  '; }"
+nav_css = epub.EpubItem(
+    uid="style_interactive",
+    file_name="Styles/style.css",
+    media_type="text/css",
+    content=css_content.encode("utf-8"),  # always explicit
+)
+```
+- Always call `.encode("utf-8")` on the CSS string before passing to `EpubItem`.
+- Prefer Unicode escape sequences in CSS (`\25B8`) over literal characters to avoid the encoding surface entirely.
+- Verify by reading the output ZIP with Python `zipfile` and decoding as UTF-8; confirm arrows are intact.
+
+**Phase:** v3 Phase 1. Silent corruption — requires a test.
+
+---
+
+### Pitfall 8: ebooklib discards `<head>` content in `EpubHtml` items
+
+**What goes wrong:** Documented ebooklib behaviour: when writing `EpubHtml` items, ebooklib re-serializes content using its own XML writer and discards or restructures `<head>`. Any `<style>` tags embedded inline in chapter HTML are silently dropped.
+
+**Consequences:** If interactive-mode CSS is embedded as `<style>` in chapters rather than as a linked stylesheet, it will not appear in the output EPUB.
+
+**Prevention:**
+- All CSS in a standalone `EpubItem` with `media_type="text/css"`. Already the pattern in `_XHTML_TEMPLATE` via `<link rel="stylesheet">`.
+- Confirm the `file_name` of the CSS `EpubItem` matches the `href` in the link tag exactly (currently `../Styles/style.css` — verify path is correct relative to chapter file location in the ZIP).
+
+**Phase:** v3 Phase 1.
+
+---
+
+### Pitfall 9: ebooklib may strip XML declaration from content documents
+
+**What goes wrong:** ebooklib may strip the `<?xml version="1.0" encoding="utf-8"?>` PI when re-serializing `EpubHtml` content. epubcheck does not flag a missing XML declaration (it is optional in XML 1.0). Low severity.
+
+**Prevention:** Not critical. Noted for completeness.
+
+---
+
+## epubcheck Validation
+
+### Pitfall 10: `<details>` only passes epubcheck when document is correctly typed as XHTML5
+
+**What goes wrong:** epubcheck validates content documents against the HTML5-derived RelaxNG schema. `<details>` and `<summary>` are in that schema. However, if the OPF manifest entry uses the wrong media type (e.g., `text/html` instead of `application/xhtml+xml`), epubcheck uses a different validation path and may report unexpected errors or miss structural issues.
+
+**Correct OPF manifest entry (ebooklib sets this for `.xhtml` files by default):**
+```xml
+<item id="chapter1" href="Text/chapter1.xhtml"
+      media-type="application/xhtml+xml"/>
+```
+
+**Prevention:**
+- Verify ebooklib is not overriding `media_type` to `text/html` anywhere in the pipeline.
+- Run `epubcheck output.epub` in CI and assert zero errors as acceptance criterion for v3.
+
+**Phase:** v3 Phase 1.
+
+---
+
+### Pitfall 11: Do not add `epub:type` to `<details>` — causes epubcheck warnings
+
+**What goes wrong:** Developers sometimes add `epub:type="sidebar"` or `epub:type="footnote"` to `<details>`. epubcheck warns when `epub:type` values do not match the structural semantics of the element in context.
+
+**Prevention:** No `epub:type` on `<details>` or `<summary>`. They are interactive content; no structural semantic is needed.
+
+**Phase:** v3 Phase 1.
+
+---
+
+## Kindle Conversion
+
+### Pitfall 12: Kindle e-ink renders `<details>` permanently open — graceful degradation
+
+**What goes wrong:** Kindle e-ink devices (Paperwhite, Oasis, Scribe) use a proprietary rendering engine (KF8/AZW3) that does not implement the HTML5 `<details>` interactive model. The element renders permanently expanded — `<summary>` content and all children always visible.
+
+**Consequences:** On Kindle e-ink, `--mode interactive` is visually identical to `--mode per-page`. Translation is always visible. This is the intended graceful fallback per PROJECT.md.
+
+**Nothing breaks:** Content is readable. The fallback is safe.
+
+**What does not work:** Tap-to-reveal. Users expecting interactive mode on Kindle e-ink will see fully expanded output.
+
+**Kindle MOBI via Calibre:** MOBI (pre-KF8) is obsolete. Calibre EPUB→MOBI strips `<details>` and renders as plain paragraphs. KFX (Kindle Format X) via Kindle Previewer similarly flattens `<details>` to always-open.
+
+**Prevention:** UX/documentation only. CLI help text should state: `--mode interactive requires an EPUB reader with HTML5 details support (Apple Books, most Android reading apps). Kindle e-ink renders translations permanently visible.`
+
+**Phase:** v3 documentation. No code mitigation.
+
+---
+
+### Pitfall 13: Calibre EPUB-to-EPUB conversion may strip `<details>`
+
+**What goes wrong:** When a user post-processes the output through Calibre's EPUB→EPUB conversion (to change metadata, fonts, etc.), Calibre's HTML cleaner may strip `<details>` and `<summary>` as interactive elements, depending on Calibre version and cleaner settings.
+
+**Prevention:** Out of scope for this codebase. Document that Calibre conversion may break interactive mode; recommend using the output EPUB directly without post-processing if interactivity is required.
+
+**Phase:** v3 documentation.
+
+---
+
+## Testing Strategy
+
+### Pitfall 14: Unit tests cannot verify `<details>` toggle — manual reader testing required
+
+**What goes wrong:** Unit tests verify HTML structure but cannot verify the toggle works in a given reading system. It is easy to ship structurally correct HTML that fails interactively in every target reader.
+
+**Testing layers:**
+
+| Layer | Tool | What it catches |
+|-------|------|-----------------|
+| HTML structure | `pytest` + `lxml.etree` XPath | `<details>` present, `<summary>` first child, classes correct |
+| XML validity | `lxml.etree.fromstring()` strict | Non-well-formed XML, unclosed tags |
+| EPUB validity | `epubcheck` CLI in CI | Schema errors, manifest issues, media-type mismatches |
+| CSS correctness | String assertions on generated CSS | Presence of `summary::before`, `[open]` selector, no literal Unicode in `content:` |
+| Visual/interactive | Manual: Apple Books + Kobo app + Kindle app | Toggle works, indicator renders, graceful fallback on e-ink |
+
+**Assertion pattern for XHTML structure (use lxml XML parser, not BeautifulSoup):**
+```python
+from lxml import etree
+XHTML = "http://www.w3.org/1999/xhtml"
+doc = etree.fromstring(chapter_xhtml.encode("utf-8"))
+details_els = doc.findall(f".//{{{XHTML}}}details")
+assert len(details_els) == expected_paragraph_count
+for d in details_els:
+    assert d[0].tag == f"{{{XHTML}}}summary"  # summary is first child
+```
+
+**Do not use BeautifulSoup for XHTML structure assertions** — the HTML parser is lenient and will not catch well-formedness errors.
+
+**Phase:** v3 Phase 1 (unit tests) + manual testing before release.
+
+---
+
+### Pitfall 15: `<details>` inside `<p>` is invalid HTML5 — block inside inline
+
+**What goes wrong:** If a code path wraps original paragraph content as `<p><details>...</details></p>`, this is invalid: `<details>` (block) cannot be a child of `<p>` (inline context in HTML5). The HTML5 parser auto-closes the `<p>` before `<details>`, breaking structure silently.
+
+The correct structure is: `<div class="bt-pair"><details><summary>...</summary>...</details></div>`.
+
+**Prevention:**
+- The `bt-pair` wrapper must always be a `<div>`, never a `<p>`.
+- `<details>` must be a direct child of `<div class="bt-pair">`.
+- Headings (`<h1>`–`<h6>`): do NOT wrap in `<details>`. `<details>` inside `<h1>` is invalid HTML5. Per PROJECT.md, headings use an always-visible inline `<span>` for translation — correct approach.
+
+**Phase:** v3 Phase 1 (HTML structure design).
+
+---
+
+## Phase-Specific Warnings (v3 additions)
+
+| Phase Topic | Likely Pitfall | Mitigation |
+|-------------|---------------|------------|
+| Template upgrade | XHTML 1.1 DOCTYPE incompatible with `<details>` | Replace with `<!DOCTYPE html>` |
+| HTML structure | `<details>` inside `<p>` invalid, auto-closed by parsers | Always use `<div>` outer wrapper |
+| BS4/lxml round-trip | `<details>` mutated if passed through HTML parser | Wrap AFTER all BS4 calls; never re-parse wrapped fragments |
+| CSS authoring | UA disclosure triangle invisible on Kobo e-ink | Use `summary::before` with explicit content |
+| CSS authoring | `details[open]` unsupported in old firmware | Treat as progressive enhancement only |
+| ebooklib CSS | Unicode arrows corrupted if passed as `str` | Always `.encode("utf-8")` before `EpubItem` |
+| ebooklib CSS | Unicode in `content:` value | Prefer `\25B8` escape over literal ▸ in CSS source |
+| epubcheck | Wrong media-type triggers different schema path | Verify `application/xhtml+xml` in manifest |
+| Kindle e-ink | `<details>` permanently open | Document; graceful fallback is acceptable |
+| Testing | lxml HTML parser hides XML well-formedness errors | Use `lxml.etree` XML parser for structure assertions |
+
+---
+
+## Sources (v3 additions)
+
+- EPUB3 Content Documents 3.2 (allowed elements): https://www.w3.org/publishing/epub32/epub-contentdocs.html (MEDIUM)
+- epubcheck GitHub (RSC-005 schema validation): https://github.com/w3c/epubcheck (MEDIUM)
+- DAISY best practices — `<details>` for extended descriptions (reader support notes): https://daisy.github.io/transitiontoepub/best-practices/extended-desc/ExtendedDescriptionsBestPractices.html (HIGH)
+- EDRLab: Allow pure HTML5 in EPUB3: https://www.edrlab.org/2025/07/06/allow-pure-html5-in-epub-3/ (MEDIUM)
+- MDN: `<summary>` element: https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/summary (HIGH)
+- details/summary inconsistencies across browsers (Matuzo): https://www.matuzo.at/blog/2023/details-summary (HIGH)
+- CSS-Tricks: Using and styling `<details>`: https://css-tricks.com/using-styling-the-details-element/ (MEDIUM)
+- EPUB CSS encoding issue (epub-specs): https://github.com/w3c/epub-specs/issues/1628 (MEDIUM)
+- ebooklib source (epub.py): https://github.com/aerkalov/ebooklib/blob/master/ebooklib/epub.py (MEDIUM)
+- IDPF forum — DOCTYPE for EPUB3: https://idpf.org/forum/topic-777 (MEDIUM)
+- Kobo epub-spec: https://github.com/kobolabs/epub-spec (MEDIUM)
+- Reading System Overrides and EPUB CSS: https://github.com/w3c/publ-cg/issues/9 (MEDIUM)

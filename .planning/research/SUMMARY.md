@@ -1,198 +1,238 @@
-# Research Summary: Book Translator
+# Research Summary: v3 Interactive Parallel EPUB
 
-**Project:** Book Translator — AI-powered fiction book translator CLI
-**Domain:** CLI tool / NLP pipeline / EPUB processing
-**Researched:** 2026-05-19
-**Confidence:** HIGH (stack verified via Context7 + PyPI; architecture from domain expertise)
-
----
+**Project:** book-translator
+**Domain:** CSS-only bilingual EPUB with reveal-on-tap details/summary toggle
+**Researched:** 2026-06-12
+**Confidence:** HIGH (live code execution + spec verification)
 
 ## Executive Summary
 
-Book Translator is a local CLI tool that ingests EPUB, FB2, FB2.ZIP, TXT, and Markdown fiction books, translates them via any OpenAI-compatible API (OpenRouter, Ollama, Azure), and produces a parallel-reading bilingual EPUB where original and translated paragraphs alternate. The defining constraint is strict 1:1 paragraph alignment — every original paragraph has exactly one translated counterpart, never merged or split. This is the core product concept and everything in the architecture flows from it.
+The v3 --mode interactive milestone adds a fourth output mode to the existing CLI. Each paragraph is wrapped in a native HTML5 details/summary disclosure widget: original text in summary (always visible), translation in the body (revealed on tap). Zero JavaScript required; zero new runtime dependencies. The entire feature is HTML/CSS generation work, slotting into the existing html_gen.py / builder.py / assembler pipeline with four small file changes.
 
-The recommended approach is a 7-component pipeline with clean boundaries: Parser → Splitter → [Analyzer (smart mode)] → Translator → Assembler, with a JobStore persisting state across all stages and a thin CLI orchestrating everything. Build order is bottom-up: data structures first, then JobStore, Parser, Splitter, Translator (simple mode), Assembler, CLI wire-up — delivering a working v1 before touching smart mode. The asyncio + semaphore concurrency model with tenacity retries is well-suited for parallel API calls. SQLite via stdlib `sqlite3` handles all job persistence without external dependencies.
+Two pre-existing bugs must be fixed as part of v3 regardless of new feature work: (1) the CSS file is never packaged into the EPUB -- builder.py calls neither book.add_item(css_item) nor ch_item.add_item(css_item), so all existing EPUB output has no stylesheet; (2) the _XHTML_TEMPLATE DOCTYPE is XHTML 1.1, which is EPUB2-era and incompatible with details -- must be replaced with <!DOCTYPE html> for EPUB3 XHTML5 compliance. Both fixes are low-risk and prerequisite to any details work.
 
-The top risks are: (1) character name drift across chapters when chunks are translated independently — mitigated by pre-analysis glossary in smart mode; (2) EPUB output invalidity (duplicate IDs, manifest mismatches) — mitigated by systematic ID suffixing and epubcheck validation; (3) interrupted jobs producing unresumable state — mitigated by atomic SQLite writes with chunk-level checkpoints. None of these risks are blocking for v1 — they have clear, well-understood preventions.
+The highest risk area is cross-reader CSS behavior: three separate CSS rules are required to remove the browser disclosure triangle (one for Firefox, one for WebKit/Apple Books, one for Chromium 86+), and CSS content: strings must use Unicode escapes (\25B8) not literal characters, with the string .encode("utf-8") before passing to EpubItem. On Kobo e-ink and Kindle e-ink the toggle degrades gracefully to always-visible bilingual output, which is the specified acceptable fallback.
 
 ---
 
 ## Key Findings
 
-### Recommended Stack
+### Stack Additions (what's new vs existing)
 
-The stack is built on mature, stable Python libraries with no exotic dependencies. `ebooklib` (0.20) handles both EPUB input and output; `lxml` (6.1.1) covers FB2/XML; `beautifulsoup4` (4.14.3) parses inner EPUB HTML. The AI client is the official `openai` SDK (2.37.0) configured with `base_url` pointing to OpenRouter — this is the simplest path to provider flexibility. `typer` (0.25.1) provides the CLI, `rich` (15.0.0) handles progress display, and `tenacity` (9.1.4) handles retries. Job state uses `sqlite3` from stdlib — no `diskcache` or Redis required.
+No new runtime dependencies. All work uses existing stack: ebooklib 0.20, BeautifulSoup4 4.12+, lxml 5.x, Python 3.12.
 
-**Core technologies:**
-- `ebooklib 0.20`: EPUB read + write — de facto standard, EPUB2/3 support
-- `lxml 6.1.1`: FB2 XML parsing — fastest C-based XML with full XPath + namespace support
-- `beautifulsoup4 4.14.3`: EPUB inner HTML parsing — pairs with lxml backend
-- `openai 2.37.0`: AI client — `base_url` override for OpenRouter, native asyncio via `AsyncOpenAI`
-- `typer 0.25.1`: CLI — type-hint driven, auto-help, subcommand groups
-- `rich 15.0.0`: Progress bars, spinners, job status tables
-- `tenacity 9.1.4`: Exponential backoff + jitter for API rate-limit retries
-- `sqlite3` (stdlib): Job state persistence — atomic writes, survives restarts, no extra deps
-- `pydantic 2.13.4`: Schema validation for job config, glossary, progress state
+Changes required in existing tooling:
 
-**What NOT to use:** Celery/RQ (requires Redis), `python-daemon` (POSIX-only), `diskcache` (stdlib sqlite3 is sufficient), `argparse` (Typer is better), `requests` (blocks event loop), OpenAI Batch API (24h SLA too slow).
+| Component | Change | Why |
+|-----------|--------|-----|
+| builder.py | Add book.add_item(css_item) + ch_item.add_item(css_item) | CSS never packaged -- pre-existing bug, breaks all modes |
+| html_gen.py _XHTML_TEMPLATE | Replace XHTML 1.1 DOCTYPE with <!DOCTYPE html> | details invalid under XHTML 1.1 DTD; epubcheck RSC-005 errors |
+| html_gen.py | Add build_interactive_html() + INTERACTIVE_CSS constant | New rendering function |
+| builder.py | Add EpubBuilder.build_interactive() method | New assembler path |
+| assembler/__init__.py | Add assemble_interactive() | Orchestration entry point |
+| cli.py | Add "interactive" to VALID_MODES + dispatch branch | CLI exposure |
 
-### Expected Features
+Dev-only optional: epubcheck 0.4.2 (PyPI wrapper, requires Java) for EPUB3 validation. Do not add to [project.dependencies].
 
-**Must have (table stakes):**
-- EPUB and FB2/FB2.ZIP input — dominant formats in target market (especially Russian fiction → FB2)
-- TXT and Markdown input — universal fallback for manuscripts and technical users
-- 1:1 paragraph alignment in bilingual EPUB output — the core product concept
-- Source + target language flags (`--from`/`--to`) — no hardcoding
-- Any OpenAI-compatible endpoint via `--api-base` + `--api-key` / env var
-- User-specified model via `--model` — model landscape changes fast
-- Persistent job state with run ID printed on start
-- Progress reporting (paragraphs done / total, chapter, ETA)
-- Status check by run ID: `translate status <run_id>` (works after process restart)
-- Resume interrupted jobs — re-translating 300 pages from scratch is unacceptable
-- Retry failed paragraphs with exponential backoff
-- Skip + mark unresolved: `[TRANSLATION FAILED]` on persistent failures, never abort
-- DRM detection with clear error message — not silent empty output
+Do not add: html5lib (lxml handles details correctly), cssutils (unmaintained), any JS runtime.
 
-**Should have (competitive differentiators):**
-- Smart mode: pre-analysis of book → locked glossary (character names, place names, style notes) injected into every translation prompt — addresses name drift, the #1 quality failure mode
-- Persistent background jobs with rich status (paragraphs, chapters, ETA, estimated cost)
-- Open model selection — any OpenRouter slug, Ollama local endpoint
-- Parallel-reading EPUB with CSS-classed paragraph pairs (`.original` / `.translation`)
-- Glossary filtering per chunk (inject only terms appearing in current chunk — controls cost)
-- Cost/time estimation before starting large jobs
+### Feature Design (concrete HTML/CSS patterns)
 
-**Defer to v2+:**
-- Web UI / GUI — out of scope until core is validated
-- Multiple target languages in one pass — medium complexity, adds multi-lang job state
-- DRM removal — legal liability
-- Built-in OCR / PDF input — heavyweight dependency, separate problem domain
-- Translation memory / TM databases — overkill for fiction; smart mode glossary achieves 80%
-- Human post-editing workflow — requires web app + auth
-- DOCX/PDF output — EPUB covers all major e-readers; Calibre handles conversion
-- Automatic language detection — unreliable short-text, forces explicit intent (`--from` is safer)
-- RTL language support (Arabic/Hebrew/Farsi) — low effort but niche for v1; add in v2
+**Paragraph unit -- primary structure:**
 
-### Architecture Overview
+```xml
+<details class="bt-interactive">
+  <summary class="bt-original">Original sentence or paragraph text.</summary>
+  <p class="bt-translation" xml:lang="en" lang="en">Translation revealed on tap.</p>
+</details>
+```
 
-Seven components with single responsibilities connected by typed data structures:
+Rules:
+- Original text goes directly in summary as text/inline content. NO block elements (p, div) inside summary -- HTML5 content model is phrasing content (inline) only.
+- Translation as sibling p after summary, inside details.
+- Both xml:lang AND lang on translation element. XML processors use xml:lang; some EPUB readers process XHTML as HTML5 and ignore xml:lang.
+- Do NOT use epub:type="translation" -- does not exist in EPUB 3 Structural Semantics Vocabulary 1.1. No reader acts on it.
 
-| # | Component | Input → Output | Key Library |
-|---|-----------|---------------|-------------|
-| 1 | **Parser** | File bytes → `BookDocument` IR | `ebooklib`, `lxml`, stdlib |
-| 2 | **Splitter** | `BookDocument` → `Chunk[]` with context windows | Pure Python |
-| 3 | **Analyzer** *(smart mode only)* | `Chunk[]` → `Glossary` | `AsyncOpenAI` |
-| 4 | **Translator** | `Chunk[]` + optional `Glossary` → `TranslatedChunk[]` | `AsyncOpenAI`, `tenacity` |
-| 5 | **Assembler** | `BookDocument` + `TranslatedChunk[]` → bilingual EPUB | `ebooklib` |
-| 6 | **JobStore** | Persist/retrieve `Job` state by run ID | `sqlite3` |
-| 7 | **CLI** | User-facing thin orchestration layer | `typer`, `rich` |
+**First details per chapter -- open by default for discoverability:**
 
-Job state is checkpointed to SQLite after each translation batch. Resume re-parses the source file (deterministic), queries completed chunk IDs, and skips them. Concurrency model: `asyncio` + `AsyncOpenAI` + `asyncio.Semaphore(max_concurrent=5)` — no threads, safe single-writer SQLite.
+```xml
+<details class="bt-interactive" open="open">
+```
 
-**Key patterns:**
-- `BookDocument` IR decouples parsing from translation and assembly
-- `Chunk.id = "chapterID:elementIndex"` enables stable resume across restarts
-- Assembler is pure: given `BookDocument` + `TranslatedChunk[]`, it always produces the same output
-- CLI is thin — no business logic; all logic in the 6 inner components
-- Architecture is web-service-ready: swap CLI layer for HTTP endpoints; 6 inner components unchanged
+Use open="open" (XML attribute syntax) not bare open (HTML boolean syntax is not valid XML). First paragraph only per chapter.
 
-### Critical Pitfalls
+**Heading treatment -- never use details for headings:**
 
-1. **Paragraph count mismatch (1:1 alignment violated)** — The core product value breaks if a model returns N+1 paragraphs for N input. Prevention: include explicit count in system prompt ("Translate this single paragraph. Return exactly one paragraph."); validate output paragraph count equals input count; mark as failed if not.
+```xml
+<h2 class="bt-heading">
+  Original heading text
+  <span class="bt-heading-translation" xml:lang="en" lang="en">Translation</span>
+</h2>
+```
 
-2. **Character name drift across chapters** — "Иван" becomes "Ivan", "John", "Vanya" in different chapters because each chunk is translated independently. Prevention: pre-analysis phase (smart mode) extracts all proper nouns, builds locked glossary, injects into every prompt. This is the #1 fiction quality failure mode.
+details inside h1-h6 is invalid HTML5. Heading semantics must be preserved for TOC/navigation.
 
-3. **Unresumable job state on crash** — Mid-write corruption leaves job unresumable. Prevention: atomic SQLite writes per chunk (single transaction, chunk_id PRIMARY KEY prevents duplicate inserts on retry); write output EPUB to `.tmp` path, rename on completion.
+**CSS -- full block:**
 
-4. **EPUB output invalidity** — Duplicate paragraph IDs (original + translated both have `id="p1"`), spine/manifest mismatches, oversized chapter files (>200KB crashes e-ink readers). Prevention: suffix translated IDs (`id="p1-t"`), validate with epubcheck, split large chapters.
+```css
+/* Three rules required to remove disclosure triangle across all engines */
+details.bt-interactive > summary.bt-original {
+  list-style: none;        /* Firefox */
+  cursor: pointer;
+  display: block;
+  margin: 0.5em 0;
+}
+details.bt-interactive > summary.bt-original::-webkit-details-marker {
+  display: none;           /* Safari / WebKit / Apple Books */
+}
+details.bt-interactive > summary.bt-original::marker {
+  display: none;           /* Chromium 86+ */
+}
 
-5. **FB2 encoding corruption** — FB2.ZIP files from Russian sources are frequently Windows-1251, not UTF-8. Prevention: detect encoding with `chardet` before lxml parse; normalize all text to NFC Unicode after decode.
+/* Custom indicator -- use Unicode escape, NOT literal character */
+details.bt-interactive > summary.bt-original::before {
+  content: "\25B6\00A0";  /* right-pointing triangle + non-breaking space */
+  font-size: 0.7em;
+  vertical-align: middle;
+  color: #888;
+}
+details.bt-interactive[open] > summary.bt-original::before {
+  content: "\25BC\00A0";  /* down-pointing triangle + non-breaking space */
+}
 
-6. **Prompt injection via book content** — Malicious EPUB paragraph "IGNORE PREVIOUS INSTRUCTIONS." Prevention: wrap content in `<source_text>` delimiters; instruct model in system prompt that content inside delimiters is text to translate, not commands.
+details.bt-interactive > .bt-translation {
+  margin: 0.2em 0 0.5em 1.2em;
+  color: #555;
+  font-style: italic;
+  border-left: 2px solid #ccc;
+  padding-left: 0.5em;
+}
 
-7. **Context window starvation at chunk boundaries** — Chunk 3 ends mid-narrative, chunk 4 has no antecedent. Prevention: include 2–3 trailing sentences from prior chunk as non-translatable context in the prompt.
+.bt-heading-translation {
+  display: block;
+  font-size: 0.6em;
+  font-weight: normal;
+  font-style: italic;
+  color: #777;
+  margin-top: 0.15em;
+}
+```
+
+All three triangle-removal rules required. No CSS transitions/animations (unreliable in eInk). No color-only state differentiation (eInk is grayscale).
+
+### Architecture (new files, integration points)
+
+New functions / methods:
+
+| Location | Symbol | Lines | Notes |
+|----------|--------|-------|-------|
+| assembler/html_gen.py | build_interactive_html(para) | ~30 | Parallel to build_pair_html; pass-through for image/table; heading span; details for paragraph/caption/footnote |
+| assembler/html_gen.py | INTERACTIVE_CSS | ~30 | Module-level CSS string constant; imported by builder.py |
+| assembler/builder.py | EpubBuilder.build_interactive() | ~50 | Parallel to build(); calls build_interactive_html; adds CSS EpubItem |
+| assembler/__init__.py | assemble_interactive() | ~15 | Orchestration entry; atomic write via .tmp -> os.replace() |
+| cli.py | -- | ~5 | Add "interactive" to VALID_MODES; dispatch branch; update import |
+
+Unchanged: splitter.py, models/document.py, _inject_class, _prefix_ids, wrap_chapter_xhtml, build_pair_html, build_monolingual, Paragraph model.
+
+CSS packaging fix (applies to ALL modes):
+
+```python
+css_item = epub.EpubItem(
+    uid="style",
+    file_name="Styles/style.css",
+    media_type="text/css",
+    content=CSS_CONTENT.encode("utf-8"),  # always explicit encode
+)
+book.add_item(css_item)       # Step 1: add to ZIP manifest
+for ch in all_chapter_items:
+    ch.add_item(css_item)     # Step 2: inject <link> into each chapter <head>
+```
+
+Build order within build_interactive():
+1. Create EpubBook, set metadata
+2. Add EpubNcx + EpubNav
+3. Add CSS EpubItem (before chapter loop)
+4. Chapter loop: build_interactive_html(p) -> split_chapter_parts() -> wrap_chapter_xhtml() -> EpubHtml + book.add_item()
+5. Set spine + ToC
+6. Return book
+
+Key architectural constraint: BS4/lxml must run on para.raw_html BEFORE details wrapping. Never pass a details-wrapped fragment back through BeautifulSoup HTML parser -- lxml HTML parser applies HTML4 block/inline rules and will mutate details structure silently. _inject_class and _prefix_ids operate on source-paragraph fragments only; details wrapper assembled afterward via f-strings.
+
+Translation path: Interactive mode uses same per-page translation engine as --mode per-page. sentence_chunk_texts / sentence_translations irrelevant for v3. No changes to translator/.
+
+### Critical Pitfalls (must-address before coding)
+
+1. **CSS never packaged into EPUB** -- pre-existing bug in builder.py. Both book.add_item(css_item) and ch_item.add_item(css_item) are missing. Must fix before v3 work begins. Affects all existing modes silently.
+
+2. **XHTML 1.1 DOCTYPE incompatible with details** -- current _XHTML_TEMPLATE uses the XHTML 1.1 public identifier. Replace with <!DOCTYPE html> (no public/system identifier). Keep xmlns="http://www.w3.org/1999/xhtml" on html element. Must fix before any details HTML is generated -- epubcheck RSC-005 errors otherwise.
+
+3. **Three CSS rules required to remove disclosure triangle** -- list-style: none alone fixes Firefox only, ::-webkit-details-marker fixes Safari/Apple Books only, ::marker fixes Chromium 86+ only. All three must be present or triangle remains visible in at least one target engine.
+
+4. **CSS content: strings must use Unicode escapes + explicit .encode("utf-8")** -- ebooklib EpubItem(content=...) requires bytes. If str passed, ebooklib may encode with latin-1, corrupting characters above U+00FF. Unicode arrows U+25B8 and U+25BE are above that range -- silent corruption. Fix: content=css_string.encode("utf-8"). Prefer \25B8 escape over literal character in CSS source.
+
+5. **BS4/lxml wrapping order** -- details must be assembled AFTER all BeautifulSoup operations. Never pass a details-wrapped fragment into any BS4 round-trip. Architectural constraint enforced at code review.
+
+6. **epub:type="translation" does not exist** -- not in EPUB 3 Structural Semantics Vocabulary 1.1. Do not add. Use xml:lang + lang dual attributes on translation elements instead.
+
+7. **open="open" not bare open** -- XML requires explicit attribute values. Bare open is invalid XML.
+
+8. **No block elements inside summary** -- HTML5 content model for summary is phrasing content (inline). No p, div, or other block elements inside summary.
 
 ---
 
-## Recommended Stack (Quick Reference)
+## Recommended Build Order
 
-| Component | Choice | Version |
-|-----------|--------|---------|
-| EPUB input/output | `ebooklib` | 0.20 |
-| EPUB HTML parsing | `beautifulsoup4` + lxml backend | 4.14.3 |
-| FB2 XML parsing | `lxml` | 6.1.1 |
-| Markdown input | `markdown-it-py` | 4.2.0 |
-| AI client | `openai` (`AsyncOpenAI`) | 2.37.0 |
-| CLI framework | `typer` | 0.25.1 |
-| Terminal output | `rich` | 15.0.0 |
-| Retry logic | `tenacity` | 9.1.4 |
-| Job persistence | `sqlite3` (stdlib) | stdlib |
-| Data validation | `pydantic` | 2.13.4 |
-| File locking | `filelock` | 3.29.0 |
-| Async file I/O | `aiofiles` | 25.1.0 |
+### Phase 1: Infrastructure fixes + core HTML generation
 
----
+**Rationale:** CSS packaging bug and DOCTYPE must be fixed before any details work -- correctness prerequisites. Build and test build_interactive_html() first so downstream work has a correct foundation.
 
-## Implications for Roadmap
+**Delivers:** Working CSS delivery in EPUB (fixes all modes), EPUB3-compliant DOCTYPE, build_interactive_html() with unit tests.
 
-### Phase 1: Foundation — Data Structures + Job Persistence
-**Rationale:** All other components depend on shared data structures (`BookDocument`, `Chunk`, `TranslatedChunk`, `Glossary`). JobStore early enables test-driven resume logic before Translator exists.
-**Delivers:** Typed IR, SQLite schema, CRUD for job state, run ID generation
-**Addresses:** Resume interrupted jobs (pitfall #3), atomic writes, chunk-level checkpointing
-**Avoids:** Corrupt state on crash (atomic SQLite transactions from day one)
+**Tasks:**
+- Fix builder.py: add css_item creation, book.add_item(), ch_item.add_item() for existing build() and build_monolingual()
+- Replace XHTML 1.1 DOCTYPE in _XHTML_TEMPLATE with <!DOCTYPE html>
+- Add INTERACTIVE_CSS constant to html_gen.py
+- Implement build_interactive_html() in html_gen.py
+- Unit tests: assert details/summary structure, class names, heading span pattern, pass-through kinds, first-chapter open="open", no self-closing tags, no block elements inside summary
+- Use lxml.etree XML parser (not BeautifulSoup) for structure assertions in tests
 
-### Phase 2: Parsers — EPUB, FB2, TXT, Markdown
-**Rationale:** Parser depends only on data structures. EPUB first (dominant format, most users). FB2 second (Russian fiction market, key differentiator). TXT/Markdown last (simplest).
-**Delivers:** `ParserRegistry`, `EpubParser`, `FB2Parser`, `TxtParser`, `MarkdownParser` → `BookDocument`
-**Addresses:** Table stakes input formats; DRM detection; malformed file recovery
-**Avoids:** FB2 encoding corruption (chardet + NFC normalization), DRM silent failures, malformed EPUB silent skips
-**Research flag:** None needed — ebooklib and lxml APIs are well-documented
+**Avoids:** Pitfalls 1, 2, 5, 7, 8
 
-### Phase 3: Splitter + Translation Core (Simple Mode)
-**Rationale:** Splitter + Translator (simple) together enable end-to-end translation in a single phase. This is the first "it works" milestone.
-**Delivers:** `Splitter` (chunks with context windows), `Translator` (async + semaphore + tenacity retries), working translation pipeline for EPUB input
-**Addresses:** Context window starvation (trailing context), rate limit handling, concurrency control
-**Avoids:** Mid-sentence chunking (sentence-boundary splitting), rate limit loops (exponential backoff)
-**Research flag:** None needed — asyncio + tenacity + openai SDK patterns are well-documented
+### Phase 2: Builder + assembler integration
 
-### Phase 4: Assembler + EPUB Output
-**Rationale:** Assembler depends on `BookDocument` + `TranslatedChunk[]` — both available after Phase 3. This closes the full pipeline and produces real bilingual EPUB output.
-**Delivers:** `Assembler` producing valid bilingual EPUB with `.original` / `.translation` CSS classes, preserved assets (images, CSS, fonts), correct EPUB metadata
-**Addresses:** Paragraph count validation, duplicate ID prevention, chapter file size limits, EPUB metadata (dc:language, xml:lang)
-**Avoids:** EPUB invalidity, CSS conflicts, character encoding corruption in output
+**Rationale:** Wire build_interactive_html() into EPUB packaging pipeline. Depends on Phase 1 being correct.
 
-### Phase 5: CLI — Full Command Surface
-**Rationale:** All inner components are complete; CLI wires them together. Thin layer — no business logic.
-**Delivers:** `book-translator translate`, `status`, `resume`, `list`, `cancel`, `retry` subcommands; run ID output on start; progress display with rich; cost estimation warning for large books
-**Addresses:** Single-command invocation, output path control, background job monitoring, retry failed paragraphs
-**Avoids:** Silent progress (10–60 min jobs need progress bars), cost surprises
+**Delivers:** EpubBuilder.build_interactive(), assemble_interactive(), CLI --mode interactive flag.
 
-### Phase 6: Smart Mode — Pre-Analysis + Glossary
-**Rationale:** Additive on top of working v1. `Analyzer` produces a `Glossary` that `Translator` already has a slot for (optional param). No structural changes to existing components.
-**Delivers:** `Analyzer` (1–3 large-context API calls → `Glossary`), glossary filtering per chunk, enriched system prompts with character names, place names, style notes
-**Addresses:** Character name drift (#1 quality failure mode), pronoun inconsistency, over-translation of proper nouns
-**Avoids:** System prompt bloat (per-chunk glossary filtering), hallucinated content (low temperature + explicit instruction)
-**Research flag:** Consider deeper research on structured output / function calling for glossary extraction — JSON schema enforcement varies by model
+**Tasks:**
+- Add EpubBuilder.build_interactive() to builder.py
+- Add assemble_interactive() to assembler/__init__.py
+- Add "interactive" to VALID_MODES in cli.py + dispatch branch
+- End-to-end test: generate sample EPUB from fixture, verify file is well-formed ZIP with correct manifest
 
-### Phase Ordering Rationale
+**Avoids:** Pitfalls 3, 4 (CSS encoding in EpubItem)
 
-- **Bottom-up from data structures:** No component can be built without the IR types it depends on
-- **JobStore before Translator:** Resume logic can be TDD'd before the costly API calls exist
-- **Parser before Splitter:** Splitter depends on `TextElement` kinds defined by Parser
-- **Translator before Assembler:** Assembler is a pure function — test it with mock `TranslatedChunk[]` first, but real integration requires Translator
-- **CLI last:** All inner components independently testable; CLI integration is a thin wire-up
-- **Smart mode additive:** Designed from the start to be optional — `Glossary` is an optional param to `Translator`
+### Phase 3: CSS authoring + cross-reader validation
+
+**Rationale:** CSS correctness is reader-dependent and cannot be fully unit-tested. Manual validation against Apple Books, Kobo app, and Calibre required before release.
+
+**Delivers:** Correct triangle removal across Firefox/WebKit/Chromium, visual indicator, graceful fallback documented.
+
+**Tasks:**
+- Verify all three triangle-removal rules present
+- Verify content: values use \25B8 / \25BC escapes not literal characters
+- Manual sideload test: Apple Books (iOS), Kobo app (iOS or Android), Calibre viewer
+- Document Kindle e-ink graceful fallback in CLI --help text
+- Optional: run epubcheck against output
 
 ### Research Flags
 
-Phases likely needing deeper research during planning:
-- **Phase 6 (Smart Mode):** Structured output / function calling for glossary extraction — JSON schema enforcement varies significantly by model and provider; needs research during planning
-- **Phase 4 (EPUB Output):** epubcheck integration — Java CLI tool, may need research on Python wrapper or subprocess invocation pattern
+Needs additional research during planning:
+- **Phase 3 (Kobo e-ink behavior):** details toggle on Kobo e-ink is unconfirmed -- cannot be verified without hardware sideload. Plan manual test gate before release.
 
-Phases with standard patterns (skip research-phase):
-- **Phase 1 (Foundation):** Pure Python dataclasses + stdlib sqlite3 — no research needed
-- **Phase 2 (Parsers):** ebooklib and lxml APIs fully documented and verified
-- **Phase 3 (Translation Core):** asyncio + openai SDK + tenacity — standard patterns, verified
-- **Phase 5 (CLI):** Typer API well-documented
+Standard patterns (skip research-phase):
+- **Phase 1:** All patterns verified by live code execution. build_pair_html is the direct parallel.
+- **Phase 2:** Parallel to existing build() / assemble() -- well-established internal patterns.
 
 ---
 
@@ -200,63 +240,40 @@ Phases with standard patterns (skip research-phase):
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | All libraries verified on PyPI + Context7 on 2026-05-19; versions pinned |
-| Features | MEDIUM | Core features HIGH confidence; differentiator value judgments are domain inference |
-| Architecture | HIGH | ebooklib + openai-python APIs verified via Context7; pipeline pattern is conventional |
-| Pitfalls | MEDIUM | Web search unavailable for research session; based on domain expertise + format specs |
+| Stack | HIGH | Live code execution: ZIP inspection confirmed CSS packaging pattern, BS4+lxml round-trip verified, HTML5 DOCTYPE confirmed in ebooklib output |
+| Features | MEDIUM | details on Kobo e-ink unconfirmed; all other readers HIGH confidence. Web search + EPUB3 spec + MDN |
+| Architecture | HIGH | Directly derived from existing codebase structure; new code is parallel to existing patterns |
+| Pitfalls | HIGH (code) / MEDIUM (reader) | CSS packaging + DOCTYPE bugs confirmed by live execution. Cross-reader CSS behavior based on spec + community sources |
 
-**Overall confidence:** HIGH for implementation path; MEDIUM for quality/feature value judgments.
+**Overall confidence:** HIGH for implementation plan. MEDIUM for Kobo e-ink interactive behavior specifically.
 
 ### Gaps to Address
 
-- **epubcheck integration:** Java dependency for EPUB validation — verify if Python wrapper exists or if subprocess is the right approach (flag for Phase 4 planning)
-- **OpenRouter rate limits by model:** Default `max_concurrent=5` is a safe guess; actual optimal value varies by model and subscription tier — document as configurable and let users tune
-- **Sentence boundary splitting:** PITFALLS.md recommends spaCy/NLTK for sentence tokenization — adds dependencies; evaluate if simple `\n\n` paragraph splitting is sufficient for most fiction (paragraphs rarely need sub-paragraph chunking)
-- **Smart mode glossary quality:** NER via LLM calls is the recommended approach but quality varies by model; may need prompt engineering experimentation during Phase 6
-- **Windows compatibility:** `subprocess.Popen` with `start_new_session=True` for background detachment has OS-specific edge cases on Windows — test or explicitly document Windows as unsupported for background mode
-
----
-
-## What NOT to Build in v1
-
-- Web UI / GUI (scope creep before core is validated)
-- DRM removal (legal liability)
-- PDF / OCR input (separate heavyweight problem)
-- Translation memory / TM databases (overkill; smart mode glossary achieves 80%)
-- Human post-editing workflow (requires web app + auth)
-- Multiple output formats (DOCX, PDF) — EPUB only; Calibre converts
-- Automatic language detection — require explicit `--from` flag
-- Cloud sync / job sharing — local only in v1
-- Push notifications / webhooks — CLI polling is sufficient
-- Built-in cost estimator — warn before start, let API billing show actuals
-- RTL language support — low effort but niche; v2 addition
+- **Kobo e-ink toggle behavior:** Unconfirmed. Cannot be verified without hardware. Plan manual sideload test before v3 release. Graceful fallback (always-visible bilingual) is acceptable per PROJECT.md.
+- **details[open] CSS selector on old firmware:** Treat as progressive enhancement. Do not rely on it for core readability.
+- **aria-label on summary:** Recommended for accessibility (shortens verbose screen reader announcements on long paragraphs) but not blocking. Defer to post-v3 if time-constrained.
 
 ---
 
 ## Sources
 
-### Primary (HIGH confidence)
-- `ebooklib` — Context7 `/aerkalov/ebooklib`: EPUB read/write API, spine, items
-- `openai-python` — Context7 `/openai/openai-python`: `AsyncOpenAI`, `base_url`, retry config
-- `tenacity` — Context7 `/jd/tenacity`: exponential backoff + jitter pattern
-- `typer` — Context7 `/fastapi/typer`: subcommand groups, type-hint CLI
-- `rich` — Context7 `/textualize/rich`: Progress API, Live, Columns
-- `lxml` — Context7 `/lxml/lxml`: XPath namespace, `recover=True`, entity security
-- EPUB 3.3 Specification (W3C): `dc:language`, `xml:lang`, `epub:type`, spine structure
-- EPUB Accessibility 1.1 (W3C): accessibility metadata schema
-- PyPI JSON API (2026-05-19): all library versions verified
+### Primary (HIGH confidence -- live code execution)
+- ebooklib 0.20 ZIP inspection (2026-06-12) -- confirmed CSS packaging pattern, HTML5 DOCTYPE in output
+- BeautifulSoup4 + lxml live round-trip (2026-06-12) -- confirmed details preserved
+
+### Primary (HIGH confidence -- spec/MDN)
+- MDN: details element -- toggle behavior, content model
+- MDN: summary element -- phrasing content model constraint
+- EPUB 3 Structural Semantics Vocabulary 1.1 (W3C, 2021) -- confirmed no epub:type="translation" exists
+- CSS-Tricks: Using & Styling the Details Element -- three-rule triangle removal pattern
 
 ### Secondary (MEDIUM confidence)
-- epubcheck (GitHub w3c/epubcheck): validation tool capability — training knowledge
-- FB2 format spec (fictionbook.org): element structure, namespace — training knowledge
-- OpenAI API rate limits: platform.openai.com — training knowledge of limits and backoff patterns
-- CLI UX patterns: derived from Celery, rq, yt-dlp, rsync — training knowledge
-
-### Tertiary (LOW confidence / needs validation)
-- DeepL document translation feature set: verify current EPUB support status (may have changed since training)
-- Calibre plugin ecosystem: exact current feature set — training knowledge, check before positioning
+- EPUB3 Content Documents spec -- details/summary in RelaxNG schema
+- Kobo epub-spec (GitHub) -- reader architecture notes
+- EDRLab: Allow pure HTML5 in EPUB 3 -- DOCTYPE guidance
+- IDPF forum -- DOCTYPE for EPUB3 XHTML5
+- DAISY best practices -- details extended descriptions, reader support notes
 
 ---
-
-*Research completed: 2026-05-19*
+*Research completed: 2026-06-12*
 *Ready for roadmap: yes*

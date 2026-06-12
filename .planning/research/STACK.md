@@ -1,12 +1,120 @@
-# Stack Research: Book Translator
+# Technology Stack
 
-**Project:** AI-powered fiction book translator CLI  
-**Researched:** 2026-05-19  
-**Overall confidence:** HIGH (Context7 + PyPI verified)
+**Project:** book-translator
+**Researched:** 2026-05-19 (v1 baseline) | 2026-06-12 (v3 interactive-mode addendum)
+**Overall confidence:** HIGH (Context7 + PyPI + live code execution)
 
 ---
 
-## Recommended Stack
+## v3 Interactive EPUB Mode — Addendum (2026-06-12)
+
+### Summary
+
+**Zero new runtime dependencies.** `--mode interactive` is purely HTML/CSS work. The existing stack (ebooklib 0.20, BS4 4.12+, lxml 5.x, Python 3.12) handles everything. Two integration fixes in `builder.py` are required regardless of the new mode — the CSS file is currently never packaged into the EPUB.
+
+**Key facts verified by live code execution against installed packages:**
+
+1. ebooklib 0.20 **rewrites** every `EpubHtml` document at write time — strips our XHTML 1.1 DOCTYPE and manually written `<link>` tag, adds EPUB3 namespace (`xmlns:epub`), then injects CSS links from `ch.add_item(css_item)`. The `<link rel="stylesheet">` in `_XHTML_TEMPLATE` (`html_gen.py` line 23) never reaches the output file — ebooklib discards it. Currently `builder.py` calls neither `book.add_item(css_item)` nor `ch.add_item(css_item)`, so CSS is not packaged at all.
+2. BeautifulSoup with `lxml` correctly parses, preserves, and serialises `<details>`/`<summary>` — verified round-trip for standalone and nested structures.
+3. ebooklib's output XHTML passes `<details>`/`<summary>` through cleanly. Final file uses `<!DOCTYPE html>` (HTML5) not XHTML 1.1, with `xmlns="http://www.w3.org/1999/xhtml"` — valid EPUB3 XHTML5.
+
+### New Dependencies
+
+**Runtime:** None.
+
+**Dev (optional):**
+
+| Package | Version | Purpose | Add with |
+|---------|---------|---------|---------|
+| `epubcheck` | 0.4.2 (PyPI) | W3C EpubCheck Python wrapper; validates EPUB3 structure, OPF, HTML5. Requires Java. | `uv add --dev epubcheck` |
+
+Do not add `epubcheck` to `[project.dependencies]` — it requires Java, making it unsuitable as a mandatory runtime dep.
+
+**Do not add:** `html5lib` (lxml handles `<details>` correctly; html5lib is slower), `cssutils` (unmaintained), `tinycss2` (unnecessary for static CSS).
+
+### CSS Asset Pattern in ebooklib
+
+Correct pattern — verified by inspecting the ZIP output:
+
+```python
+from ebooklib import epub
+
+css_item = epub.EpubItem(
+    uid="style",
+    file_name="Styles/style.css",   # path inside EPUB ZIP
+    media_type="text/css",
+    content=CSS_CONTENT.encode("utf-8"),
+)
+
+# Step 1: adds file to ZIP manifest
+book.add_item(css_item)
+
+# Step 2: injects <link href="Styles/style.css" ...> into each chapter's <head>
+for ch_item in all_chapter_items:
+    ch_item.add_item(css_item)
+```
+
+ebooklib computes the correct relative href automatically (`Styles/style.css` when chapter is at `Text/ch1.xhtml`). The `../Styles/style.css` path in `_XHTML_TEMPLATE` is wrong and moot — ebooklib replaces it.
+
+**Required changes to `builder.py`:**
+- After building `all_chapter_items`, create `css_item` and call `book.add_item(css_item)`.
+- Call `ch_item.add_item(css_item)` for every chapter item.
+- `EpubBuilder` needs to own or receive the CSS string; make it a module-level constant or inject via constructor.
+
+**Optional change to `html_gen.py`:**
+- The `<link>` in `_XHTML_TEMPLATE` is dead code. It is harmless but misleading. The template can be simplified to a body-only fragment; ebooklib generates `<html>/<head>/<body>` itself when `ch_item.content` is a fragment. This is cleaner but not required for v3.
+
+### HTML Generation Notes
+
+**BeautifulSoup + lxml with `<details>`/`<summary>`:**
+
+```python
+from bs4 import BeautifulSoup, Tag
+
+html = '<details><summary><p>Original</p></summary><p>Translation</p></details>'
+soup = BeautifulSoup(html, 'lxml')
+body = soup.find('body')
+el = next(c for c in body.children if isinstance(c, Tag))
+# el.name == 'details' ✓
+# str(el) == '<details><summary><p>Original</p></summary><p>Translation</p></details>' ✓
+```
+
+The `_inject_class` helper works correctly on `<details>` — it finds it as the first `Tag` child and appends a class.
+
+**Recommended HTML structure for interactive mode:**
+
+Paragraphs / captions / footnotes:
+```html
+<details class="bt-interactive">
+  <summary><p class="bt-orig">Original text</p></summary>
+  <p class="bt-trans">Translation text</p>
+</details>
+```
+
+Headings (always visible, no toggle):
+```html
+<h2 class="bt-heading">Original heading <span class="bt-trans-inline">Translation</span></h2>
+```
+
+Images / tables: pass-through unchanged (existing `_PASS_THROUGH_KINDS` handles this).
+
+**Graceful fallback:** readers without `<details>` support render `<summary>` content and body content both as normal block elements — original and translation both visible permanently. This satisfies the PROJECT.md fallback requirement.
+
+**Build strategy for `build_interactive_html()`:** Construct the `<details>` wrapper with f-strings directly; call `_inject_class` / `_prefix_ids` only on `para.raw_html` (the original-content fragment). Do not parse the outer `<details>` through BeautifulSoup unnecessarily.
+
+### Validation Tooling
+
+| Tool | Status | Use |
+|------|--------|-----|
+| `epubcheck` (dev dep) | Optional, needs Java | One-shot manual EPUB3 validation |
+| `ruff` | Already in dev deps | Covers new Python code; no new rules needed |
+| `pytest` | Already in dev deps | Unit-test `build_interactive_html()`: assert `<details>`/`<summary>` structure, class names, pass-through kinds |
+
+No dedicated CSS linter needed — interactive CSS is ~30 static lines. W3C CSS Validator sufficient for manual check.
+
+---
+
+## v1 Baseline Stack (unchanged)
 
 | Component | Library | Version | Rationale |
 |-----------|---------|---------|-----------|
@@ -30,30 +138,28 @@
 
 ### ebooklib (recommended)
 
-**Version:** 0.20 | PyPI verified  
+**Version:** 0.20 | PyPI verified
 **Status:** Active, maintained. Primary EPUB library in the Python ecosystem.
 
 ```python
 from ebooklib import epub
 book = epub.read_epub('book.epub')
 
-# Iterate document chapters
 for item in book.get_items_of_type(ebooklib.ITEM_DOCUMENT):
     content_html = item.get_content()  # returns bytes
-    # parse with BeautifulSoup
 ```
 
 **Capabilities:**
 - Read EPUB2 and EPUB3
-- Access spine order (reading order of chapters)
-- Read/write metadata (title, author, language)
+- Access spine order
+- Read/write metadata
 - Read from file path, `Path`, or `BytesIO`
 - Export images, CSS, fonts as-is
 
 **Limitations:**
-- Returns raw HTML bytes per chapter — must pair with BeautifulSoup for paragraph extraction
+- Returns raw HTML bytes per chapter — pair with BeautifulSoup for paragraph extraction
 - Does not parse inline CSS or resolve cross-references automatically
-- Encrypted DRM EPUBs will fail silently or error — document as known limitation
+- Encrypted DRM EPUBs will fail silently or error
 
 ### BeautifulSoup4 + lxml backend (required companion)
 
@@ -62,19 +168,7 @@ from bs4 import BeautifulSoup
 
 soup = BeautifulSoup(item.get_content(), 'lxml')
 paragraphs = soup.find_all('p')
-for p in paragraphs:
-    text = p.get_text(separator=' ', strip=True)
 ```
-
-Use `lxml` as the parser backend (faster than `html.parser`, handles malformed HTML in EPUBs).
-
-### Alternatives Considered
-
-| Library | Notes | Verdict |
-|---------|-------|---------|
-| `pypub` | Write-only; no read | ❌ Not suitable |
-| `epub-utils` | Thin wrapper around zipfile; less featured | ❌ Skip |
-| Raw `zipfile` | EPUB is a ZIP — can parse manually | ⚠️ Only if ebooklib fails edge cases |
 
 ---
 
@@ -82,132 +176,68 @@ Use `lxml` as the parser backend (faster than `html.parser`, handles malformed H
 
 ### lxml (recommended)
 
-**Version:** 6.1.1 | PyPI verified  
-**Rationale:** FB2 is pure XML. lxml is the fastest, most complete Python XML library with full XPath and namespace support. No dedicated FB2 library has meaningful community activity.
+**Version:** 6.1.1 | PyPI verified
 
-**FB2 namespace:**
 ```python
 from lxml import etree
 
 NS = {"fb": "http://www.gribuser.ru/xml/fictionbook/2.0"}
-
 tree = etree.parse("book.fb2")
 root = tree.getroot()
 
-# Extract body paragraphs
 for section in root.xpath("//fb:body/fb:section", namespaces=NS):
     for para in section.xpath("fb:p", namespaces=NS):
         text = "".join(para.itertext())
 ```
 
-**FB2.ZIP handling:**
+**FB2.ZIP:**
 ```python
 import zipfile
-from lxml import etree
-
 with zipfile.ZipFile("book.fb2.zip") as zf:
     names = [n for n in zf.namelist() if n.endswith(".fb2")]
     xml_bytes = zf.read(names[0])
-
 root = etree.fromstring(xml_bytes)
 ```
-
-**FB2 Structure to extract:**
-- `<body>` → main narrative
-- `<title>` inside `<section>` → chapter titles  
-- `<p>` → paragraphs
-- `<section>` → chapter boundaries
-- `<epigraph>` → epigraphs (treat as block)
-- `<poem>`, `<stanza>`, `<v>` → verse lines (special handling needed)
-- `<FictionBook/description/title-info>` → book metadata
-
-**Encoding:** FB2 is UTF-8 or Windows-1251. lxml `etree.fromstring()` respects the XML declaration; for `.fb2.zip`, explicitly pass `encoding=` if needed.
-
-### Alternatives Considered
-
-| Library | Notes | Verdict |
-|---------|-------|---------|
-| `fb2` (PyPI) | Abandoned, last release 2013 | ❌ Dead |
-| `python-fb2` | Minimal wrapper | ❌ Not enough |
-| stdlib `xml.etree.ElementTree` | No XPath namespaces, slower | ⚠️ Fallback only |
 
 ---
 
 ## EPUB Output Generation
 
-### ebooklib (same library — recommended)
-
-**Pattern for bilingual output (alternating paragraphs):**
+### ebooklib pattern
 
 ```python
-from ebooklib import epub
-from bs4 import BeautifulSoup
-
 book = epub.EpubBook()
-book.set_identifier("translated-uuid-here")
-book.set_title(f"{original_title} [RU/EN Bilingual]")
-book.set_language("ru")
-book.add_author(original_author)
-book.add_metadata("DC", "description", "Bilingual edition with original and translation")
+# ... set metadata ...
+
+css_item = epub.EpubItem(
+    uid="style_default",
+    file_name="Styles/style.css",
+    media_type="text/css",
+    content=CSS_CONTENT.encode("utf-8"),
+)
+book.add_item(css_item)
 
 chapters = []
 for i, (orig_html, trans_html) in enumerate(chapter_pairs):
-    c = epub.EpubHtml(
-        title=f"Chapter {i+1}",
-        file_name=f"chap_{i+1:03d}.xhtml",
-        lang="ru",
-    )
-    # Build interleaved HTML: orig para → trans para alternating
+    c = epub.EpubHtml(title=f"Chapter {i+1}", file_name=f"Text/chap_{i+1:03d}.xhtml", lang="ru")
     c.content = build_bilingual_html(orig_html, trans_html)
+    c.add_item(css_item)   # ← required for <link> injection
     book.add_item(c)
     chapters.append(c)
 
 book.add_item(epub.EpubNcx())
 book.add_item(epub.EpubNav())
 book.spine = ["nav"] + chapters
-
-# Optional: add CSS for styling orig vs translated paragraphs differently
-style = epub.EpubItem(
-    uid="style_default",
-    file_name="style/default.css",
-    media_type="text/css",
-    content=CSS_CONTENT,
-)
-book.add_item(style)
-
 epub.write_epub("output.epub", book)
 ```
-
-**Bilingual HTML builder strategy:**
-```python
-def build_bilingual_html(orig_paras: list[str], trans_paras: list[str]) -> str:
-    parts = ["<html><body>"]
-    for orig, trans in zip(orig_paras, trans_paras):
-        parts.append(f'<p class="original">{orig}</p>')
-        parts.append(f'<p class="translation">{trans}</p>')
-    parts.append("</body></html>")
-    return "\n".join(parts)
-```
-
-**CSS to distinguish paragraph types:**
-```css
-p.original  { color: #333; font-style: normal; }
-p.translation { color: #555; font-style: italic; border-left: 3px solid #aaa; padding-left: 0.5em; }
-```
-
-### Limitations to handle:
-- `epub.write_epub()` is synchronous — run in executor for large books
-- XHTML inside EPUB must be valid; sanitize translated content before embedding
-- Keep original images, CSS from source EPUB by re-adding them as `EpubItem`
 
 ---
 
 ## AI Client (OpenAI-compatible)
 
-### openai SDK (recommended)
+### openai SDK
 
-**Version:** 2.37.0 | PyPI verified  
-**Supports OpenRouter** via `base_url` override — confirmed in official docs.
+**Version:** 2.37.0 | PyPI verified
 
 ```python
 from openai import AsyncOpenAI
@@ -227,96 +257,11 @@ client = AsyncOpenAI(
 )
 ```
 
-**Basic translation call:**
-```python
-async def translate_chunk(text: str, model: str, system_prompt: str) -> str:
-    response = await client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": text},
-        ],
-        temperature=0.3,  # lower = more consistent translation
-    )
-    return response.choices[0].message.content
-```
-
-**Key SDK features for this project:**
-- `AsyncOpenAI` — native asyncio support, no extra setup
-- `base_url` — point at OpenRouter or any OpenAI-compatible endpoint
-- Built-in retry with exponential back-off (`max_retries`)
-- Per-request timeout override via `.with_options()`
-- Streaming support (`stream=True`) — useful for very long chunks
-
-**Note on OpenAI Batch API:** The SDK supports Batch API (`client.batches.create()`) for asynchronous bulk processing at 50% cost discount with 24h SLA. For local CLI use, this is likely overkill — use `asyncio.gather()` with semaphore instead.
-
 ---
 
-## CLI Framework
+## Background Jobs
 
-### Typer (recommended)
-
-**Version:** 0.25.1 | PyPI verified  
-**Built on top of Click** — inherits all Click stability.
-
-**Why Typer over Click:**
-- Zero boilerplate type annotations → CLI flags
-- Auto-generated `--help` from docstrings
-- Built-in shell completion
-- Subcommand groups via `app.add_typer()`
-
-```python
-import typer
-from pathlib import Path
-from typing import Optional
-
-app = typer.Typer(help="AI-powered book translator")
-translate_app = typer.Typer(help="Translation commands")
-jobs_app = typer.Typer(help="Background job management")
-
-app.add_typer(translate_app, name="translate")
-app.add_typer(jobs_app, name="jobs")
-
-@translate_app.command("start")
-def translate_start(
-    input_file: Path = typer.Argument(..., help="Book file (epub/fb2/txt/md)"),
-    output: Optional[Path] = typer.Option(None, "--output", "-o"),
-    model: str = typer.Option("openai/gpt-4o", "--model", "-m"),
-    mode: str = typer.Option("smart", "--mode", help="smart | simple"),
-    target_lang: str = typer.Option("ru", "--lang", "-l"),
-):
-    """Start a translation job."""
-    ...
-
-@jobs_app.command("list")
-def jobs_list():
-    """List all translation jobs."""
-    ...
-
-@jobs_app.command("status")
-def job_status(job_id: str = typer.Argument(...)):
-    """Show status of a job."""
-    ...
-```
-
-### Click (alternative — use if Typer friction encountered)
-
-**Version:** 8.4.0  
-Typer wraps Click; if advanced Click features are needed (custom parameter types, plugin architecture), drop down to Click directly. But for this project, Typer is preferable.
-
-### argparse (stdlib — avoid)
-
-Too verbose for a multi-command CLI. No value over Typer/Click.
-
----
-
-## Background Jobs (local, persistent)
-
-### Recommended approach: diskcache + filelock + subprocess
-
-For a local CLI tool, avoid heavyweight task queues (Celery/RQ require Redis/broker). The right pattern is:
-
-**1. diskcache for persistent job state**
+### diskcache + filelock + subprocess
 
 ```python
 import diskcache as dc
@@ -324,145 +269,35 @@ from pathlib import Path
 
 CACHE_DIR = Path.home() / ".book-translator" / "jobs"
 
-def get_cache() -> dc.Cache:
-    return dc.Cache(str(CACHE_DIR))
-
 def save_job(job_id: str, state: dict) -> None:
-    with get_cache() as cache:
+    with dc.Cache(str(CACHE_DIR)) as cache:
         cache[f"job:{job_id}"] = state
-
-def load_job(job_id: str) -> dict | None:
-    with get_cache() as cache:
-        return cache.get(f"job:{job_id}")
 ```
 
-**diskcache** (v5.6.3) uses SQLite under the hood — survives process restarts, supports TTL, transactions, and concurrent access.
+**Job state machine:** `QUEUED → RUNNING → COMPLETED | FAILED | CANCELLED`
 
-**2. filelock for exclusive job access**
-
-```python
-from filelock import FileLock
-
-def run_job(job_id: str):
-    lock_path = CACHE_DIR / f"{job_id}.lock"
-    with FileLock(str(lock_path), timeout=1):
-        # Only one process runs this job at a time
-        ...
-```
-
-**3. subprocess.Popen for background detachment**
-
-```python
-import subprocess, sys
-
-def start_background_job(job_id: str) -> None:
-    proc = subprocess.Popen(
-        [sys.executable, "-m", "book_translator.worker", job_id],
-        stdout=open(log_path, "w"),
-        stderr=subprocess.STDOUT,
-        start_new_session=True,  # detach from parent
-    )
-    # Store PID in job state for monitoring
-    save_job(job_id, {"status": "running", "pid": proc.pid})
-```
-
-**Job state machine:**
-```
-QUEUED → RUNNING → COMPLETED
-                 → FAILED
-                 → CANCELLED
-```
-
-**Why not python-daemon / supervisor:**
-- `python-daemon` (3.1.2) is POSIX-only — breaks on Windows
-- `supervisor` (4.3.0) requires separate daemon process and config file — overkill for end-user CLI
-- `rq` (2.9.0) requires Redis — not suitable for local tool
-- `celery` (5.6.3) — massive overhead, requires broker
-
-**Simplest viable pattern for this project:**
-- Store job metadata in `diskcache` (progress %, chapter index, PID, timestamps)
-- Worker runs as detached subprocess
-- CLI `jobs status` polls diskcache for current state
-- On resume: worker reads last completed chapter index from diskcache, continues
+**Why not Celery/RQ/supervisor:** All require external broker or daemon — unsuitable for local CLI.
 
 ---
 
 ## Async / Batching for AI Calls
 
-### Pattern: asyncio.Semaphore + asyncio.gather (recommended)
-
-The translation of a book is embarrassingly parallel at the paragraph/chunk level. The correct pattern is `AsyncOpenAI` with a semaphore to control concurrency without overwhelming the API.
+### asyncio.Semaphore + asyncio.gather
 
 ```python
 import asyncio
-from openai import AsyncOpenAI
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-client = AsyncOpenAI(...)
-
-@retry(
-    stop=stop_after_attempt(5),
-    wait=wait_exponential(multiplier=1, min=2, max=60),
-    reraise=True,
-)
-async def translate_with_retry(semaphore: asyncio.Semaphore, chunk: str, **kwargs) -> str:
+@retry(stop=stop_after_attempt(5), wait=wait_exponential(multiplier=1, min=2, max=60))
+async def translate_with_retry(semaphore, chunk, **kwargs):
     async with semaphore:
         return await translate_chunk(chunk, **kwargs)
 
-async def translate_all_chunks(
-    chunks: list[str],
-    max_concurrent: int = 5,
-    **kwargs,
-) -> list[str]:
-    semaphore = asyncio.Semaphore(max_concurrent)
-    tasks = [
-        translate_with_retry(semaphore, chunk, **kwargs)
-        for chunk in chunks
-    ]
-    return await asyncio.gather(*tasks, return_exceptions=False)
+async def translate_all(chunks, max_concurrent=5, **kwargs):
+    sem = asyncio.Semaphore(max_concurrent)
+    tasks = [translate_with_retry(sem, c, **kwargs) for c in chunks]
+    return await asyncio.gather(*tasks)
 ```
-
-**Key parameters:**
-- `max_concurrent=5` — safe default for OpenRouter; tune per model/tier
-- `wait_exponential` from tenacity — handles 429 rate-limit responses
-- `asyncio.gather()` preserves order, collects all results
-
-**Progress reporting during async batch:**
-
-```python
-from rich.progress import Progress, TaskID
-import asyncio
-
-async def translate_all_with_progress(chunks: list[str], ...) -> list[str]:
-    results = [None] * len(chunks)
-    semaphore = asyncio.Semaphore(max_concurrent)
-
-    with Progress() as progress:
-        task = progress.add_task("[green]Translating...", total=len(chunks))
-
-        async def translate_one(i: int, chunk: str):
-            async with semaphore:
-                result = await translate_chunk(chunk, ...)
-                results[i] = result
-                progress.advance(task)
-
-        await asyncio.gather(*[translate_one(i, c) for i, c in enumerate(chunks)])
-
-    return results
-```
-
-**Chunk sizing strategy:**
-- **Simple mode:** Fixed token-window chunks (~2000 tokens = ~1500 words)
-- **Smart mode:** Chapter-boundary chunks with context prefix (glossary + style instructions)
-- Never chunk in the middle of a sentence — split at `\n\n` or sentence boundaries
-
-**Streaming vs non-streaming:**
-- Non-streaming preferred for batch — simpler, easier to retry failed chunks
-- Streaming useful only for interactive preview mode
-
-### aiohttp backend (alternative)
-
-The openai SDK supports `aiohttp` via `pip install openai[aiohttp]`. Prefer default `httpx` unless you encounter known `httpx` async bugs with the specific OpenRouter endpoint.
 
 ---
 
@@ -470,18 +305,13 @@ The openai SDK supports `aiohttp` via `pip install openai[aiohttp]`. Prefer defa
 
 | Library / Approach | Reason to Avoid |
 |--------------------|-----------------|
-| `pypdf` / `pdfplumber` | Project doesn't target PDF; adds unnecessary dependency |
-| `Celery` + Redis | Broker requirement; absurd overhead for local CLI tool |
-| `RQ` | Requires Redis; same overkill |
+| `pypdf` / `pdfplumber` | Project doesn't target PDF |
+| `Celery` + Redis | Broker requirement; overkill for local CLI |
 | `python-daemon` | POSIX-only; breaks on macOS/Windows corner cases |
-| `supervisor` | Requires separate daemon config; user-hostile for end users |
-| `argparse` (stdlib) | Too verbose; no value over Typer for multi-command CLI |
-| `lxml` for EPUB HTML content | Use BeautifulSoup4 for EPUB HTML (lxml too low-level for inner HTML soup); reserve lxml for FB2 XML |
-| `requests` (sync HTTP) | Never use for async translation batch; blocks event loop |
-| `threading` for concurrency | GIL + async I/O mix → complex; asyncio is the right model |
-| `tiktoken` (unless needed) | Only needed if implementing token counting logic; add only when implementing Smart mode chunk sizing |
-| `xml.etree.ElementTree` | No namespace XPath support; slower than lxml for large FB2 files |
-| OpenAI Batch API | 24h SLA — too slow for interactive/local use; overhead not worth it for book translation |
+| `html5lib` | Slower than lxml; lxml handles HTML5 elements correctly |
+| `cssutils` | Unmaintained |
+| `requests` (sync HTTP) | Blocks event loop; use AsyncOpenAI |
+| OpenAI Batch API | 24h SLA — too slow for interactive use |
 
 ---
 
@@ -489,44 +319,25 @@ The openai SDK supports `aiohttp` via `pip install openai[aiohttp]`. Prefer defa
 
 | Area | Confidence | Source | Notes |
 |------|------------|--------|-------|
+| ebooklib CSS packaging | HIGH | Live code execution (2026-06-12) | ZIP inspection confirmed pattern |
+| BS4 + lxml `<details>` support | HIGH | Live code execution (2026-06-12) | Round-trip verified |
+| ebooklib XHTML output format | HIGH | Live code execution (2026-06-12) | HTML5 DOCTYPE confirmed |
+| No new runtime deps needed | HIGH | Analysis of feature requirements | Pure HTML/CSS work |
 | ebooklib for EPUB | HIGH | Context7 docs + PyPI | Verified API; version 0.20 current |
 | lxml for FB2 | HIGH | Context7 docs + PyPI | XPath namespace confirmed working |
 | openai SDK + OpenRouter | HIGH | Context7 README + official docs | `base_url` pattern confirmed |
 | Typer CLI framework | HIGH | Context7 docs + PyPI | Version 0.25.1; active development |
-| diskcache for jobs | MEDIUM | PyPI + library docs | Solid SQLite-backed library; pattern is conventional |
-| filelock | HIGH | PyPI | Cross-platform lock; widely used |
-| asyncio.Semaphore pattern | HIGH | Python stdlib + openai SDK docs | Standard async concurrency pattern |
-| tenacity retry | HIGH | PyPI + widespread usage | De facto retry library |
-| Rich for progress | HIGH | Context7 docs + PyPI | Confirmed progress API |
-| markdown-it-py for Markdown | MEDIUM | PyPI | Best modern option; less critical than EPUB/FB2 |
-| subprocess detach pattern | MEDIUM | Python stdlib | Works but OS-specific edge cases exist on Windows |
-
----
-
-## Installation
-
-```bash
-# Core runtime
-pip install ebooklib beautifulsoup4 lxml openai typer rich tenacity diskcache filelock aiofiles pydantic markdown-it-py
-
-# Optional: aiohttp backend for openai
-pip install "openai[aiohttp]"
-
-# Dev
-pip install pytest pytest-asyncio
-```
+| diskcache for jobs | MEDIUM | PyPI + library docs | Solid SQLite-backed library |
 
 ---
 
 ## Sources
 
-- ebooklib: https://github.com/aerkalov/ebooklib — Context7 `/aerkalov/ebooklib`
-- openai SDK: https://github.com/openai/openai-python — Context7 `/openai/openai-python`
-- Typer: https://github.com/fastapi/typer — Context7 `/fastapi/typer`
-- lxml: https://lxml.de — Context7 `/lxml/lxml`
-- Rich: https://github.com/Textualize/rich — Context7 `/textualize/rich`
-- Click: https://github.com/pallets/click — Context7 `/pallets/click`
-- diskcache: https://pypi.org/project/diskcache/
-- filelock: https://pypi.org/project/filelock/
-- tenacity: https://pypi.org/project/tenacity/
-- All versions verified against PyPI JSON API on 2026-05-19
+- ebooklib 0.20 live execution + ZIP inspection (2026-06-12)
+- [EbookLib Tutorial](https://docs.sourcefabric.org/projects/ebooklib/en/latest/tutorial.html)
+- [epubcheck PyPI](https://pypi.org/project/epubcheck/)
+- [BeautifulSoup Documentation](https://www.crummy.com/software/BeautifulSoup/bs4/doc/)
+- ebooklib: https://github.com/aerkalov/ebooklib
+- openai SDK: https://github.com/openai/openai-python
+- Typer: https://github.com/fastapi/typer
+- All v1 versions verified against PyPI JSON API on 2026-05-19

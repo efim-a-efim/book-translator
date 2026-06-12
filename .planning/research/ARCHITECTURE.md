@@ -1,491 +1,242 @@
-# Architecture Research: Book Translator
+# Architecture: --mode interactive Integration
 
-**Researched:** 2026-05-19
-**Confidence:** HIGH (ebooklib + openai-python verified via Context7; patterns from domain knowledge)
-
----
-
-## Component Overview
-
-Seven discrete components, each with a single responsibility:
-
-| Component | Responsibility | Key Library |
-|-----------|---------------|-------------|
-| **Parser** | Ingest source file → `BookDocument` IR | `ebooklib`, `lxml`, stdlib |
-| **Splitter** | `BookDocument` → ordered `Chunk` list | Pure Python |
-| **Analyzer** | `Chunk[]` → `Glossary` (smart mode only) | `AsyncOpenAI` |
-| **Translator** | `Chunk[]` + optional `Glossary` → `TranslatedChunk[]` | `AsyncOpenAI`, `tenacity` |
-| **Assembler** | `BookDocument` + `TranslatedChunk[]` → bilingual EPUB | `ebooklib` |
-| **JobStore** | Persist and retrieve `Job` state by run ID | `sqlite3` (stdlib) |
-| **CLI** | User-facing entry point; delegates to all above | `click` or `typer` |
-
-The web interface (future) replaces or wraps the CLI layer only — the other six components are untouched.
+**Project:** book-translator v3
+**Date:** 2026-06-12
+**Scope:** How `--mode interactive` integrates with existing builder/html_gen
 
 ---
 
-## Data Flow
+## Summary
 
-```
-[Input File]
-     │
-     ▼
-┌─────────────┐
-│   Parser    │  Reads EPUB/FB2/FB2.ZIP/TXT/MD
-│             │  Emits: BookDocument
-└──────┬──────┘
-       │  BookDocument
-       ▼
-┌─────────────┐
-│  Splitter   │  Splits into ordered Chunks with metadata
-│             │  (chapter ref, position, element type)
-└──────┬──────┘
-       │  Chunk[]
-       ├──────────────────────────────┐
-       │                              │ (smart mode only)
-       ▼                              ▼
-┌─────────────┐               ┌─────────────┐
-│  Translator │               │  Analyzer   │
-│  (simple)   │               │             │ → Glossary
-└──────┬──────┘               └──────┬──────┘
-       │                             │ Glossary
-       │                             ▼
-       │                      ┌─────────────┐
-       │                      │  Translator │
-       │                      │  (smart)    │
-       │                      └──────┬──────┘
-       │                             │
-       └──────────────┬──────────────┘
-                      │  TranslatedChunk[]
-                      ▼
-               ┌─────────────┐
-               │  Assembler  │  Weaves original + translation
-               │             │  paragraph-pair into EPUB
-               └──────┬──────┘
-                      │  output.epub
-                      ▼
-                 [Output EPUB]
-```
+Interactive mode adds a CSS-only `<details>`/`<summary>` reveal-on-tap EPUB. The
+pipeline is: CLI dispatch → `assemble_interactive()` in `assembler/__init__.py` →
+`EpubBuilder.build_interactive()` in `builder.py` → per-paragraph
+`build_interactive_html()` in `html_gen.py` → `split_chapter_parts()` (unchanged) →
+`wrap_chapter_xhtml()` (unchanged).
 
-**Job state is written to JobStore at each stage boundary.** If the process dies mid-translation, resume reads the last checkpoint from the store and continues from that Chunk index.
+Interactive mode slots in with minimal new surface: one new function in `html_gen.py`,
+one new method on `EpubBuilder`, one new function in `assembler/__init__.py`, and ~10
+lines in `cli.py`. No changes to `Paragraph`, `splitter.py`, `_inject_class`,
+`_prefix_ids`, or `wrap_chapter_xhtml`.
 
 ---
 
-## Internal Data Structures
+## New Functions
 
-### `BookDocument` (Intermediate Representation)
+### `html_gen.build_interactive_html(para: Paragraph) -> str`
 
-```python
-@dataclass
-class BookDocument:
-    metadata: BookMetadata          # title, author, language, etc.
-    chapters: list[Chapter]         # reading-order chapters
-    assets: list[Asset]             # images, CSS, fonts
-
-@dataclass
-class Chapter:
-    id: str                         # stable chapter identifier
-    title: str
-    elements: list[TextElement]     # ordered text elements
-
-@dataclass
-class TextElement:
-    id: str                         # stable within-chapter ID
-    kind: Literal["paragraph", "heading", "caption", "footnote"]
-    text: str                       # plain text for AI
-    raw_html: str                   # original HTML for EPUB round-trip
-```
-
-### `Chunk` (translation unit)
+New public function in `html_gen.py`, parallel to `build_pair_html`. Same signature
+shape; takes a single `Paragraph`, returns an HTML string.
 
 ```python
-@dataclass
-class Chunk:
-    id: str                         # "chapterID:elementIndex"
-    element: TextElement
-    context_before: list[str]       # N preceding texts (simple mode window)
-    context_after: list[str]        # N following texts
+def build_interactive_html(para: Paragraph) -> str:
 ```
 
-### `TranslatedChunk`
+Behavior by kind:
+
+| kind | output |
+|------|--------|
+| `image`, `table` | `return para.raw_html` — pass-through, identical to `build_pair_html` |
+| `heading` | `<h2 class="bt-heading">{orig} <span class="bt-trans-inline">{trans}</span></h2>` — always visible, no `<details>` |
+| `paragraph`, `caption`, `footnote` | `<details class="bt-interactive"><summary class="bt-orig">{orig_text}</summary><div class="bt-trans">{trans_text}</div></details>` |
+
+`{orig_text}` is extracted from `para.raw_html` using BeautifulSoup (same pattern already
+used in `build_pair_html` to get `tag_name`). The outer tag is dropped; only the text
+content (with inner markup preserved) goes into `<summary>`.
+
+This function does **not** call `_inject_class` or `_prefix_ids`. Those helpers exist
+only for bilingual mode to deconflict same-document ID collisions between original and
+translation blocks. In interactive mode there is no parallel ID duplication risk.
+
+### `builder.EpubBuilder.build_interactive(doc, target_lang, book_id="") -> epub.EpubBook`
+
+New method on `EpubBuilder`, structurally parallel to `build()`. The body is identical
+to `build()` with two differences:
+
+1. Replace `build_pair_html(p)` → `build_interactive_html(p)` (the import must be added).
+2. Add a CSS `EpubItem` after `EpubNcx`/`EpubNav` (see **CSS Injection**).
+
+`split_chapter_parts()` is called identically — no changes needed. The method returns
+`epub.EpubBook` like its siblings.
+
+### `assembler.assemble_interactive(job_dir: Path, target_lang: str) -> Path`
+
+New function in `assembler/__init__.py`, parallel to `assemble()`. Add to `__all__`.
 
 ```python
-@dataclass
-class TranslatedChunk:
-    chunk_id: str
-    original_text: str
-    translated_text: str
-    target_language: str
+def assemble_interactive(job_dir: Path, target_lang: str) -> Path:
 ```
 
-### `Glossary`
-
-```python
-@dataclass
-class Glossary:
-    character_names: dict[str, str]     # original → transliteration/translation
-    place_names: dict[str, str]
-    recurring_terms: dict[str, str]
-    style_notes: str                    # paragraph: narrator voice, POV, tense
-    author_style: str                   # brief description for system prompt
-```
+Reads single JSON from `job_dir/dst/`, calls `EpubBuilder().build_interactive(...)`,
+writes EPUB to `dst_dir/<book_name>.<target_lang>.epub` (same naming as `assemble()`),
+returns path. Atomic write via `.epub.tmp` → `os.replace()` — same pattern as
+`assemble()`.
 
 ---
 
-## Component Boundaries
+## Modified Files
 
-### Parser
+| File | Change | Scope |
+|------|--------|-------|
+| `assembler/html_gen.py` | Add `build_interactive_html()` | New function, ~30 lines |
+| `assembler/builder.py` | Add `build_interactive()` method; add `build_interactive_html` to import | New method ~50 lines, 1-line import change |
+| `assembler/__init__.py` | Add `assemble_interactive()`, update `__all__`, add import | ~15 lines |
+| `cli.py` | Add `"interactive"` to `VALID_MODES`; add dispatch branch in Step 6d; add `assemble_interactive` to import | ~5 lines |
 
-**Owns:**
-- Reading raw file bytes
-- Dispatching to format-specific sub-parsers (EPUB, FB2, FB2.ZIP, TXT, MD)
-- Emitting `BookDocument` with `raw_html` preserved for EPUB round-trip
-- Extracting and passing through all assets (images, CSS)
-
-**Does NOT own:**
-- Deciding how to split text into chunks (Splitter's job)
-- Any knowledge of translation or AI
-
-**Format dispatch pattern:**
-
-```python
-class ParserRegistry:
-    def parse(self, path: Path) -> BookDocument:
-        parser = self._get_parser(path.suffix.lower())
-        return parser.parse(path)
-```
-
-Sub-parsers: `EpubParser`, `FB2Parser`, `TxtParser`, `MarkdownParser`.
-`FB2.ZIP` → decompress → delegate to `FB2Parser`.
-
-**EPUB parsing with ebooklib:**
-```python
-book = epub.read_epub(path)
-for item in book.get_items_of_type(ebooklib.ITEM_DOCUMENT):
-    soup = BeautifulSoup(item.get_content(), "html.parser")
-    # extract <p>, <h1>...<h6>, <figcaption> elements
-```
-
-**FB2 parsing:** `lxml.etree` — `<p>` inside `<section>` tags; `<title>` elements become headings.
-
-**TXT/Markdown:** Split on blank lines → paragraphs. Markdown headings (`#`) → heading elements.
+**Unchanged:** `splitter.py`, `models/document.py`, `html_gen._inject_class`,
+`html_gen._prefix_ids`, `html_gen._XHTML_TEMPLATE`, `wrap_chapter_xhtml`,
+`build_pair_html`, `build_monolingual`.
 
 ---
 
-### Splitter
+## CSS Injection
 
-**Owns:**
-- Converting `BookDocument.chapters[].elements` into a flat `Chunk[]`
-- Attaching context windows (N paragraphs before/after) for simple mode
-- Respecting element type: headings always get a context window of 0 (translate directly)
+### Current state
 
-**Does NOT own:**
-- Element-type detection (done in Parser)
-- Translation logic
+`_XHTML_TEMPLATE` in `html_gen.py` (line 23) already has:
 
-**Context window rule:** Default window = 3 paragraphs. Window attaches plain text only, not full elements — used to give the AI narrative continuity, not for translation itself.
-
----
-
-### Analyzer (Smart Mode)
-
-**Owns:**
-- Making 1–3 AI calls against a representative sample of the book (first 10% + last chapter)
-- Returning a `Glossary` struct
-
-**Does NOT own:**
-- Translating any paragraph
-- Persisting job state (caller does that)
-
-**What to extract (recommended system prompt targets):**
-
-1. **Character names** — ask the AI to list all named characters with their roles
-2. **Place names** — cities, regions, fictional locations
-3. **Recurring terms** — domain-specific words (magic systems, titles, organizations)
-4. **Style notes** — narrative POV (1st/3rd), verb tense, narrator tone (formal/casual/dark)
-5. **Author style** — e.g., "spare prose, short sentences, dark humour" — used in translation system prompt
-
-Analyzer uses 2–3 large-context calls (send 50+ paragraphs per call) rather than per-paragraph calls. This keeps Analyzer cost low.
-
----
-
-### Translator
-
-**Owns:**
-- Making one AI call per Chunk (or batched group)
-- Constructing prompts from Chunk + optional Glossary
-- Handling retries with exponential backoff + jitter
-- Respecting concurrency limit (semaphore)
-
-**Does NOT own:**
-- Job persistence (caller checkpoints after each batch)
-- Context window management (Splitter provides it)
-
-**Prompt structure:**
-
-```
-SYSTEM:
-  You are a professional literary translator. Translate from {source_lang} to {target_lang}.
-  Preserve narrative voice. Do not add or remove content.
-  [If smart mode: Style notes: {glossary.style_notes}. Use these name translations: {glossary.character_names}]
-
-USER:
-  Context (do not translate):
-  {chunk.context_before}
-  ---
-  Translate this paragraph:
-  {chunk.element.text}
+```html
+<link rel="stylesheet" type="text/css" href="../Styles/style.css"/>
 ```
 
-**Async + semaphore pattern (HIGH confidence — verified via Context7):**
+Every generated XHTML chapter already links `../Styles/style.css`. However, **neither
+`build()` nor `build_monolingual()` add a CSS `EpubItem` to the book** — the link is
+present in HTML but no file is bundled in the EPUB. This is pre-existing tech debt; do
+not fix it in this milestone.
+
+### Pattern to use in `build_interactive()`
 
 ```python
-from openai import AsyncOpenAI
-import asyncio
-
-client = AsyncOpenAI(base_url=config.api_base, api_key=config.api_key)
-semaphore = asyncio.Semaphore(config.max_concurrent)  # e.g. 5
-
-async def translate_chunk(chunk: Chunk) -> TranslatedChunk:
-    async with semaphore:
-        response = await client.chat.completions.create(...)
-        return TranslatedChunk(...)
-```
-
-**Retry pattern (HIGH confidence — verified via Context7/tenacity):**
-
-```python
-from tenacity import retry, stop_after_attempt, wait_exponential_jitter, retry_if_exception_type
-from openai import RateLimitError, APIStatusError
-
-@retry(
-    stop=stop_after_attempt(6),
-    wait=wait_exponential_jitter(multiplier=1, max=60, jitter=5),
-    retry=retry_if_exception_type((RateLimitError, APIStatusError)),
+css_item = epub.EpubItem(
+    uid="style",
+    file_name="Styles/style.css",
+    media_type="text/css",
+    content=INTERACTIVE_CSS.encode("utf-8"),
 )
-async def _call_api(prompt: str) -> str: ...
+book.add_item(css_item)
 ```
+
+`INTERACTIVE_CSS` is a module-level string constant defined in `html_gen.py` (so it
+lives next to the HTML generation code it styles) and imported into `builder.py`.
+
+The path `"Styles/style.css"` matches the `href="../Styles/style.css"` in `_XHTML_TEMPLATE`.
+ebooklib places items at their `file_name` path relative to the EPUB root. XHTML files
+land under `EPUB/` by default, so `../Styles/` resolves to `Styles/` at EPUB root —
+this is correct.
+
+### Minimum required CSS rules
+
+```css
+/* Interactive reveal */
+details.bt-interactive > summary {
+    cursor: pointer;
+    list-style: none;      /* remove default triangle marker */
+}
+details.bt-interactive > summary::-webkit-details-marker {
+    display: none;         /* Webkit-specific marker removal */
+}
+.bt-trans {
+    color: #555;
+    font-style: italic;
+    margin-top: 0.4em;
+}
+/* Heading inline translation */
+.bt-trans-inline {
+    color: #555;
+    font-style: italic;
+    font-size: 0.9em;
+    margin-left: 0.5em;
+}
+```
+
+No JavaScript. `<details>` open/close is browser/reader-native. Graceful fallback: EPUB
+readers without `<details>` support display both `<summary>` content and inner div
+permanently — acceptable per PROJECT.md spec.
 
 ---
 
-### Assembler
+## Mode Dispatch
 
-**Owns:**
-- Building output EPUB from `BookDocument` + `TranslatedChunk[]`
-- Inserting paragraph pairs: original `<p>` then translated `<p class="translation">`
-- Preserving all original assets (images, CSS)
-- Adding bilingual metadata (both languages in EPUB metadata)
+### cli.py changes (Step 2b + Step 6d)
 
-**Does NOT own:**
-- Translation logic
-- Reading the source file (Parser already produced `BookDocument`)
-
-**Pair insertion pattern:**
-
-For each `TextElement` in reading order:
-1. Find matching `TranslatedChunk` by `chunk_id`
-2. Emit original `raw_html` element
-3. Emit translated element with `lang=` attribute and CSS class
-
+**Step 2b** — add `"interactive"` to `VALID_MODES` (line 28 area):
 ```python
-# Per paragraph pair in output HTML
-f'<p lang="{source_lang}">{element.raw_html}</p>'
-f'<p lang="{target_lang}" class="book-translation">{translated_text}</p>'
+VALID_MODES = {"per-page", "per-sentence", "monolingual", "interactive"}
 ```
 
-Include minimal default CSS: `.book-translation { color: #555; font-style: italic; margin-top: 0.2em; }` — user can override via custom CSS config option.
-
----
-
-### JobStore
-
-**Owns:**
-- Creating jobs with a unique run ID (`ulid` or `uuid4`)
-- Persisting job status, config, and per-chunk progress
-- Resuming incomplete jobs (return already-translated chunks, skip them in Translator)
-
-**Does NOT own:**
-- Translation logic
-- File I/O beyond the SQLite DB file
-
-**Schema (SQLite, stdlib `sqlite3`):**
-
-```sql
-CREATE TABLE jobs (
-    run_id      TEXT PRIMARY KEY,
-    status      TEXT NOT NULL,        -- queued|running|complete|failed
-    source_path TEXT NOT NULL,
-    config_json TEXT NOT NULL,        -- full JobConfig as JSON
-    created_at  TEXT NOT NULL,
-    updated_at  TEXT NOT NULL,
-    error       TEXT
-);
-
-CREATE TABLE chunk_results (
-    run_id          TEXT NOT NULL,
-    chunk_id        TEXT NOT NULL,
-    target_language TEXT NOT NULL,
-    original_text   TEXT NOT NULL,
-    translated_text TEXT NOT NULL,
-    completed_at    TEXT NOT NULL,
-    PRIMARY KEY (run_id, chunk_id, target_language)
-);
-```
-
-**Resume logic:**
-
+**Step 2c** — add validation guard (parallel to the `--output-format` guard):
 ```python
-def get_pending_chunks(run_id: str, all_chunks: list[Chunk]) -> list[Chunk]:
-    done_ids = store.get_completed_chunk_ids(run_id)
-    return [c for c in all_chunks if c.id not in done_ids]
+if output_format is not None and effective_mode == "interactive":
+    typer.echo("Error: --output-format is not valid for interactive mode", err=True)
+    raise typer.Exit(code=2)
 ```
 
-**DB location:** `~/.book-translator/jobs.db` (XDG-aware: `$XDG_DATA_HOME/book-translator/jobs.db`).
+**Step 4** — output extension: interactive is always `.epub`. The existing `else: _ext = ".epub"` branch already covers it — no change needed.
+
+**Step 6d** — assembly dispatch (add branch after `elif effective_mode == "monolingual"`):
+```python
+elif effective_mode == "interactive":
+    out_path = assemble_interactive(job_dir=run_dir, target_lang=target_lang)
+```
+
+**Import** — add `assemble_interactive` to line 12:
+```python
+from book_translator.assembler import assemble, assemble_monolingual, assemble_interactive
+```
+
+### Translation path
+
+Interactive mode uses the **same translation engine as `per-page`** — standard
+`translate()` called via `asyncio.run(translate(...))`. The `per-sentence`
+`translate_sentence()` path is not used. No changes to `translator/`.
 
 ---
 
-### CLI
+## Per-Sentence Interaction
 
-**Owns:**
-- Argument parsing and validation
-- Constructing `JobConfig` and handing off to the job runner
-- Printing run ID on job start
-- Polling and displaying progress (paragraphs done / total)
-- Saving output EPUB to user-specified path
+`sentence_chunk_texts` and `sentence_translations` on `Paragraph` are populated only
+when `--mode per-sentence` was used during translation. In interactive mode the
+translation engine is per-page (paragraph-level), so these fields are `None` on all
+paragraphs at render time.
 
-**Does NOT own:**
-- Any business logic (thin orchestration layer only)
+Therefore: `build_interactive_html` does **not** need a per-sentence branch for v3.
+The `sentence_chunk_texts` / `sentence_translations` fields are irrelevant to interactive
+mode as specified.
 
-**Key commands:**
+If a future milestone combines sentence-level data with interactive rendering (e.g. one
+`<details>` per sentence chunk), `build_interactive_html` would add a loop over
+`para.sentence_chunk_texts` — but that is out of scope here.
 
-```
-book-translator translate <file> [OPTIONS]
-    --source-lang   TEXT  (auto-detect if omitted)
-    --target-lang   TEXT  (required; comma-separated for multi-lang)
-    --mode          [simple|smart]  (default: simple)
-    --model         TEXT  (required; no default)
-    --api-base      TEXT  (default: https://openrouter.ai/api/v1)
-    --api-key       TEXT  (or OPENROUTER_API_KEY env)
-    --concurrency   INT   (default: 8)
-    --output        PATH  (default: <input-stem>_bilingual.epub)
-
-book-translator status <run-id>
-book-translator resume <run-id>
-book-translator list
-```
+**No changes to `Paragraph` model for v3.**
 
 ---
 
-## Suggested Build Order
+## Build Order
 
-Dependencies flow strictly downward — build bottom-up:
+Within `build_interactive()` the correct sequence:
 
-```
-1. Data structures (BookDocument, Chunk, TranslatedChunk, Glossary)  ← no deps
-2. JobStore                                                            ← sqlite3 only
-3. Parser (EPUB first, then FB2, TXT/MD)                              ← data structures
-4. Splitter                                                            ← data structures
-5. Translator (simple mode first, async + retry)                      ← data structures + JobStore
-6. Assembler                                                           ← data structures + ebooklib
-7. CLI (wire everything together)                                      ← all above
-8. Analyzer + Translator smart mode                                    ← Translator + Glossary struct
-```
+1. Create `epub.EpubBook`, set metadata (identifier, title, author, language).
+2. `book.add_item(epub.EpubNcx())` and `book.add_item(epub.EpubNav())`.
+3. **Add CSS `EpubItem`** — must be added before `write_epub` is called; ebooklib
+   includes it in the manifest regardless of when it is added relative to chapter items,
+   but adding here (before the chapter loop) is idiomatic and consistent with Nav/Ncx.
+4. For each chapter: generate HTML snippets via `build_interactive_html(p)`, split via
+   `split_chapter_parts(pairs, title_html, chapter_num)`, wrap via
+   `wrap_chapter_xhtml([body_html], ...)`, create `EpubHtml` items, `book.add_item()`.
+5. Set `book.spine = ["nav"] + all_chapter_items`.
+6. Set `book.toc = tuple(toc_entries)`.
+7. Return book.
 
-**Why this order:**
-- Steps 1–7 deliver a working CLI for simple mode without smart mode complexity
-- Smart mode (step 8) is additive: Analyzer produces a `Glossary` that Translator already has a slot for (optional param)
-- JobStore early enables test-driven development of resume logic before Translator exists
-- Parser built before Splitter because Splitter depends on `TextElement` types that Parser defines
+Caller (`assemble_interactive`) then: `epub.write_epub(str(tmp_path), book, {})` →
+`os.replace(tmp_path, final_path)`.
 
----
+Summary table:
 
-## Job Persistence Design
-
-### Run ID
-
-Use `uuid4` (stdlib, no dependency). Format: `bt-{uuid4.hex[:12]}` — human-readable prefix, short enough to type.
-
-### Lifecycle
-
-```
-translate command called
-  → JobStore.create_job(run_id, config) → status=queued
-  → CLI prints run_id
-  → Parse + Split (synchronous, fast)
-  → JobStore.update_status(run_id, running)
-  → [if smart] Analyzer runs → Glossary stored in jobs.config_json
-  → Translator processes Chunk batches
-      → after each batch: JobStore.save_chunk_results(run_id, results)
-      → JobStore.update_progress(run_id, done, total)
-  → Assembler runs (all chunks complete)
-  → Output EPUB written
-  → JobStore.update_status(run_id, complete, output_path)
-```
-
-### Resume
-
-```
-resume <run-id>
-  → JobStore.get_job(run_id)  → config
-  → Re-parse source file  (deterministic — same chunks produced)
-  → get_pending_chunks(run_id, all_chunks)  → skips completed
-  → Continue Translator from pending chunks
-```
-
-**Atomicity:** Each `save_chunk_results` call is a single SQLite transaction. Partial batch writes are safe — the chunk_id primary key prevents duplicates on retry.
-
----
-
-## Parallelization Strategy
-
-### Concurrency Model
-
-Use Python `asyncio` with `AsyncOpenAI`. A single semaphore controls max concurrent in-flight requests. This avoids threads and is safe with SQLite (single writer from one async task at a time).
-
-```
-Batch of N chunks
-  → asyncio.gather(*[translate_chunk(c) for c in batch])
-  → semaphore limits actual concurrent API calls to max_concurrent
-  → each call independently retries on RateLimitError / 5xx
-  → after gather completes: single DB write for the batch
-```
-
-### Batch Size
-
-**Recommended:** `batch_size = max_concurrent * 4` (e.g. 5 concurrent → batches of 20).
-
-This gives the semaphore room to keep the pipeline full while limiting memory footprint and keeping checkpoint granularity fine enough (saves every 20 chunks).
-
-### Rate Limit Handling
-
-1. **Retry with jitter** (tenacity): handles transient 429s automatically
-2. **Semaphore ceiling**: `max_concurrent` config prevents burst overload (default 5)
-3. **Configurable RPM delay**: optional `--rpm-limit` flag adds `asyncio.sleep(60/rpm)` between requests for providers with strict RPM limits
-
-### Multi-language Parallelism
-
-When `--target-lang fr,de,es`, translate each language for a chunk as separate coroutines within the same semaphore pool. This means for 3 target languages, effective concurrency is `max_concurrent / 3` per language — document this in CLI help text.
-
----
-
-## Web-Service Readiness (Future Milestone)
-
-The architecture is web-service-ready without structural changes:
-
-| CLI layer | Web layer |
-|-----------|-----------|
-| `book-translator translate` | `POST /jobs` (multipart upload) |
-| `book-translator status <id>` | `GET /jobs/{run_id}` |
-| `book-translator resume <id>` | `POST /jobs/{run_id}/resume` |
-| Local file output | `GET /jobs/{run_id}/download` |
-
-The web server calls the same `JobRunner` class that the CLI calls. `JobStore` switches from local `~/.book-translator/jobs.db` to a configurable DB URL (SQLite for local, PostgreSQL for hosted). The six non-CLI components require zero changes.
-
----
-
-## Sources
-
-- **ebooklib** (EPUB read/write API): Context7 `/aerkalov/ebooklib` — HIGH confidence
-- **openai-python** (AsyncOpenAI, retry config): Context7 `/openai/openai-python` — HIGH confidence
-- **tenacity** (exponential backoff + jitter): Context7 `/jd/tenacity` — HIGH confidence
-- **sqlite3** job persistence pattern: stdlib, standard practice — HIGH confidence
-- Architecture patterns: derived from domain knowledge of translation pipelines — MEDIUM confidence (no single source)
+| Step | What | Notes |
+|------|------|-------|
+| 1 | Book metadata | Same as `build()` |
+| 2 | Ncx + Nav items | Same as `build()` |
+| 3 | CSS EpubItem | **New** — not in `build()` |
+| 4 | Chapter HTML loop | Same structure as `build()`, uses `build_interactive_html` instead of `build_pair_html` |
+| 5 | Spine | Same as `build()` |
+| 6 | ToC | Same as `build()` |

@@ -1,293 +1,314 @@
-# Features Research: Book Translator
+# Feature Landscape: Interactive EPUB Mode (--mode interactive)
 
-**Domain:** AI-powered fiction book translator → parallel-reading EPUB output
-**Researched:** 2026-05-19
-**Confidence:** MEDIUM (web search unavailable; based on training knowledge of Calibre ecosystem, DeepL, EPUB spec, CLI tooling patterns; flagged claims noted)
-
----
-
-## Table Stakes (must-have or users leave)
-
-Features that any credible book translation tool must provide. Absence causes immediate abandonment.
-
-### Input / Parsing
-
-| Feature | Why Expected | Notes |
-|---------|--------------|-------|
-| EPUB input | EPUB is the dominant ebook format; most books users have are EPUB | Must handle EPUB 2 and EPUB 3 |
-| FB2 / FB2.ZIP input | Standard in Russian-language fiction ecosystem (most used format in CIS markets) | ZIP variant is the archive form — must auto-detect |
-| TXT input | Universal fallback; plain text is the lowest common denominator | Must infer chapter breaks heuristically |
-| Markdown input | Technical users and authors store manuscripts as Markdown | Must map headings → chapters, preserve emphasis |
-| Graceful parse errors | Malformed EPUB files are common (DRM-stripped, self-published); hard crash on parse errors loses trust | Warn + best-effort, don't abort |
-
-### Translation Core
-
-| Feature | Why Expected | Notes |
-|---------|--------------|-------|
-| Source + target language config | Users translate in many directions; no hardcoding | `--from`/`--to` flags |
-| Any OpenAI-compatible endpoint | OpenRouter, self-hosted models (Ollama), Azure OpenAI — users expect provider freedom | Endpoint + API key as config, not hardcoded |
-| User-specified model | Model landscape changes fast; locking to one model breaks in 6 months | Pass model ID as parameter |
-| Preserve paragraph boundaries | Merging/splitting paragraphs breaks parallel reading — the core product concept depends on 1:1 alignment | CRITICAL — paragraph count in = paragraph count out |
-| Translate chapter titles | Chapter headings are content, not metadata; users notice immediately if untranslated | —  |
-| Translate captions / image alt text | Often overlooked; breaks immersion when skipped | Alt text also matters for accessibility |
-
-### Output Quality
-
-| Feature | Why Expected | Notes |
-|---------|--------------|-------|
-| Valid, readable EPUB output | Output must open without errors in Kindle, Kobo, Apple Books, Moon+ | Run epubcheck-equivalent validation or use proven library |
-| Alternating paragraph pairs | Core product concept: original ↔ translation in strict alternation | Visual distinction between original and translation is required (CSS class) |
-| Preserve book structure | Chapters, sections, front/back matter must be intact in output | Don't flatten the book to a single chapter |
-| Preserve original text exactly | Parallel reading means original is the reference; no paraphrasing | Store original verbatim, never modify it |
-
-### CLI UX
-
-| Feature | Why Expected | Notes |
-|---------|--------------|-------|
-| Single-command invocation | `translate book.epub --to es` — if it requires 5 setup steps it won't be used | Sensible defaults for everything optional |
-| Run ID on job start | Users need a handle to check status; print immediately on start | Short, memorable ID (e.g. `job_a1b2c3`) |
-| Progress reporting | Translation of a 300-page novel takes 10–60 min; silent tools feel broken | `[42/1200 paragraphs]` with ETA |
-| Status check by run ID | Background jobs must be queryable: `translate status <run_id>` | Must work after process restart |
-| Output path control | Users want to specify where the EPUB lands | `--output` flag; default to `<source_name>_<lang>.epub` |
-
-### Error Recovery
-
-| Feature | Why Expected | Notes |
-|---------|--------------|-------|
-| Resume interrupted jobs | API timeouts, rate limits, crashes happen; re-translating from scratch is unacceptable for 300-page books | Persist progress per paragraph; resume from last checkpoint |
-| Retry failed paragraphs | Individual API calls fail; must retry automatically with backoff | Configurable retries + exponential backoff |
-| Skip + mark unresolved | If a paragraph fails after N retries, mark it visually (e.g., `[TRANSLATION FAILED]`) and continue rather than abort | Allows partial completion |
+**Domain:** CSS-only reveal-on-tap bilingual EPUB
+**Researched:** 2026-06-12
+**Confidence:** MEDIUM — `<details>`/`<summary>` behavior in closed EPUB reading systems (Kobo eInk, Apple Books) is not publicly documented for this specific element; conclusions drawn from EPUB3 spec + CSS spec + known reader architectures. Web search confirmed CSS patterns and fallback behavior.
 
 ---
 
-## Differentiators (competitive advantage)
+## Summary
 
-Features that distinguish this tool from Calibre plugins, DeepL document upload, and Google Translate file import.
+The `--mode interactive` feature adds a fourth output mode to the existing book translator CLI. Each paragraph is wrapped in a `<details>`/`<summary>` disclosure widget: the original text lives in `<summary>` (always visible), the translation in the body of `<details>` (hidden until tapped/clicked). This requires zero JavaScript — the browser/reader's native HTML5 toggle behavior handles open/close state entirely. CSS removes the default triangle marker and adds a custom indicator.
 
-### Smart Mode (Pre-Analysis → Enriched Prompts)
+**Reader support picture:**
+- **Thorium/Readium (Electron/Chromium)** — full support. `<details>` is standard HTML5, renders and toggles correctly.
+- **Apple Books (iOS/macOS)** — uses WebKit. `<details>` supported since Safari 6 / iOS 6. CSS-only toggle works without JS.
+- **Kobo mobile app (Android/iOS)** — Chromium-based WebView. `<details>` supported.
+- **Kobo eInk devices** — JavaScript support is documented as limited/absent, but `<details>` toggling is browser-native behavior, not JS. Behavior is **unconfirmed for eInk** — eInk may render all content permanently visible (graceful fallback). Treat as MEDIUM risk; test by sideloading.
+- **Calibre viewer** — Chromium-based; full support.
+- **Kindle (AZW3)** — out of scope; project outputs EPUB only.
 
-**Value:** Fiction quality from AI degrades without context. Characters change names across translators; tone shifts between chapters. Pre-analyzing the book to extract a glossary, character name list, and style notes — then injecting that into every translation prompt — produces significantly more consistent output.
-
-- Glossary extraction: named entities, recurring terms, place names
-- Character name normalization: consistent translation of names throughout
-- Style fingerprinting: narrative voice (1st/3rd person, register, tense)
-- Inject context block into every prompt: `"This book uses these names: ..."`)
-- **Competitive gap:** Calibre plugins, DeepL, Google Translate all translate chunks in isolation with no cross-chunk memory
-
-### Multiple Target Languages in One Pass
-
-**Value:** Language learners often study two languages; bilingual households may want EN+ES+ZH in one file.
-
-- Single book, multiple `--to` flags → one EPUB with N translation columns OR N separate EPUBs
-- Reduces cost vs. N separate API calls (shared pre-analysis pass in Smart mode)
-
-### Parallel-Reading EPUB Structure
-
-**Value:** Every competitor produces a translated-only book. This tool produces a parallel text — the defining output format for language learners.
-
-- Strict visual separation: original paragraph in one CSS class, translation in another
-- Reader can style each differently in their EPUB app
-- No special software needed — standard EPUB in any reader
-
-### Persistent Background Jobs with Run IDs
-
-**Value:** Large books take minutes to hours. DeepL's document upload is a black box with no granular progress. This gives users a job they can monitor, pause, and resume.
-
-- Job persists across process restarts (disk-backed state)
-- Rich status: `running`, `paused`, `completed`, `failed`, `partial`
-- Human-readable progress: paragraphs, chapters, ETA
-
-### Open Model Selection
-
-**Value:** Users can use cheap models (gpt-5.4-mini) for quick drafts or premium models (Claude Opus, Llama 3 70B) for quality. DeepL and Google Translate offer no model choice.
-
-- Any OpenRouter model by slug
-- Self-hosted models via Ollama or LM Studio (OpenAI-compatible endpoint)
-- `--model` flag per run; config file default
+**Critical constraint:** EPUB3 uses the XML serialization of HTML5. `<details>` and `<summary>` must be written as valid XML — lowercase tags, all attributes quoted, explicit closing tags. Both elements are valid HTML5 and pass EPUBCheck 5.x.
 
 ---
 
-## Anti-Features (deliberately NOT build)
+## Core HTML Structure
 
-Features to explicitly exclude from v1 scope, with rationale.
+### Paragraph unit (primary pattern)
 
-| Anti-Feature | Why Avoid | What to Do Instead |
-|--------------|-----------|-------------------|
-| Web UI / GUI | Scope creep; adds auth, hosting, frontend complexity before core is validated | Deferred to separate milestone explicitly |
-| DRM removal | Legal liability; out of scope for translation tooling | Document that input files must be DRM-free |
-| Built-in OCR (PDF/scan) | PDF layout parsing is a separate hard problem; adds heavyweight dependency (Tesseract/pdfplumber) | Accept EPUB/FB2/TXT only; let users convert PDFs externally (Calibre) |
-| Translation memory / TM databases | CAT tool feature; overkill for fiction use case; adds significant storage + query complexity | Smart mode glossary achieves 80% of the benefit for fiction |
-| Human post-editing workflow | Collaborative editing requires a web app and auth system | Web milestone only |
-| Push notifications / webhooks | Adds infrastructure complexity; CLI polling is sufficient for v1 | Users run `translate status <id>` or watch progress |
-| Multi-format output (DOCX, PDF) | EPUB covers all major e-readers; DOCX/PDF adds layout complexity for minimal gain | EPUB only; users can convert with Calibre if needed |
-| Automatic language detection | Adds dependency (langdetect); unreliable for short texts; forces explicit user intention | Require `--from` flag; treat as safety guardrail |
-| Cloud sync / job sharing | v1 is local only; adds auth, infrastructure | Out of scope for v1 |
-| Built-in model cost estimator | Token counting varies by model; creates false precision | Document approximate costs in README; let users observe via API billing |
+```xml
+<details class="bt-interactive">
+  <summary class="bt-original">
+    Original sentence or paragraph text here.
+  </summary>
+  <p class="bt-translation" xml:lang="en" lang="en">
+    Translation text revealed on tap.
+  </p>
+</details>
+```
+
+Rules:
+- `<details>` wraps the whole unit. No enclosing `<div class="bt-pair">` needed.
+- `<summary>` contains original text directly as text or inline elements. Do NOT nest block elements (`<p>`, `<div>`) inside `<summary>` — HTML5 spec says `<summary>` content model is phrasing content (inline), not flow content. Plain text or `<span>` only.
+- Translation lives as a sibling `<p>` (or matching block tag) after `<summary>`, inside `<details>`. When `<details>` is closed, only `<summary>` is visible.
+- `xml:lang` + `lang` dual attributes on the translation element: `xml:lang` for XML processors, `lang` for HTML processors (some EPUB reading systems process XHTML as HTML5 and ignore `xml:lang`).
+- Per-sentence mode: one `<details>` per sentence chunk. Per-paragraph mode: one `<details>` per paragraph. Same structure both ways.
+
+### Pass-through kinds (image, table)
+
+No change — existing `_PASS_THROUGH_KINDS` logic in `html_gen.py` applies; raw HTML passed through unchanged.
+
+### Chapter first paragraph (open-by-default)
+
+```xml
+<details class="bt-interactive" open="open">
+  <summary class="bt-original"> ... </summary>
+  <p class="bt-translation" xml:lang="en" lang="en"> ... </p>
+</details>
+```
+
+Use `open="open"` (XML attribute syntax, not bare `open`) for the first paragraph of each chapter. Reasons: discoverability, reader learns the mechanic immediately.
 
 ---
 
-## EPUB Output Formatting: What Matters for Parallel Reading
+## CSS Patterns
 
-### Required for Readability
+Full CSS block to append to the existing `style.css`, scoped under `.bt-interactive`:
 
-| Feature | Why | Implementation |
-|---------|-----|---------------|
-| CSS class distinction: `.original` vs `.translated` | Readers need to visually distinguish source from translation; without this it's a wall of text | Apply CSS classes to every paragraph element |
-| Consistent paragraph ordering: original first, always | Readers build a mental model; inconsistency is disorienting | Never swap order |
-| No extra blank lines between pair | Blank lines between original and translation visually separate them from the next pair | CSS margin-bottom on translated paragraph only |
-| Chapter headings translated | Untranslated chapter headings jar the reading experience | Apply same parallel structure to `<h1>`/`<h2>` |
-| Page breaks between chapters preserved | E-readers use chapter structure for navigation | Use EPUB `<spine>` chapter separation |
+```css
+/* ── Interactive mode: details/summary disclosure ── */
 
-### Important but Not Blocking
+/* Remove default browser disclosure triangle — three rules needed for full coverage */
+details.bt-interactive > summary.bt-original {
+  list-style: none;        /* Firefox */
+  cursor: pointer;
+  display: block;
+  margin: 0.5em 0;
+}
 
-| Feature | Why | Notes |
-|---------|-----|-------|
-| Optional font size differentiation | Some readers want original in smaller type as reference | CSS variable or user stylesheet; don't hardcode |
-| RTL language support (Arabic, Hebrew, Farsi) | `dir="rtl"` on translated paragraphs; must not break LTR original | Set `xml:lang` and `dir` per paragraph |
-| Hyphenation disabled for translated text | AI translation often produces long words that break awkwardly | `hyphens: none` on `.translated` |
+/* Safari / WebKit / Apple Books */
+details.bt-interactive > summary.bt-original::-webkit-details-marker {
+  display: none;
+}
+
+/* Chromium 86+ (Chrome, Edge, Thorium, Kobo mobile) */
+details.bt-interactive > summary.bt-original::marker {
+  display: none;
+}
+
+/* Custom indicator: right-pointing arrow before original text */
+details.bt-interactive > summary.bt-original::before {
+  content: "\25B6\00A0";  /* ▶ + non-breaking space */
+  font-size: 0.7em;
+  vertical-align: middle;
+  color: #888;
+}
+
+/* Rotate indicator when open */
+details.bt-interactive[open] > summary.bt-original::before {
+  content: "\25BC\00A0";  /* ▼ + non-breaking space */
+}
+
+/* Style the revealed translation */
+details.bt-interactive > .bt-translation {
+  margin: 0.2em 0 0.5em 1.2em;
+  color: #555;
+  font-style: italic;
+  border-left: 2px solid #ccc;
+  padding-left: 0.5em;
+}
+```
+
+Critical notes:
+- **Three rules required** to remove the triangle: `list-style: none` (Firefox), `::-webkit-details-marker { display: none }` (Safari/Apple Books/WebKit), `::marker { display: none }` (Chromium 86+). Any single rule leaves the triangle in at least one rendering engine.
+- Avoid CSS `transition`/`animation` on details open/close — not reliably supported in eInk EPUB readers.
+- Avoid relying on color alone as the differentiator between states — eInk renders grayscale.
+- Unicode arrows (`\25B6` = ▶, `\25BC` = ▼) are safe across all Unicode-aware readers. No emoji, no image assets needed.
+- Do NOT use `display: none` on `.bt-translation` as a CSS-only toggle fallback — `<details>` native behavior handles visibility; adding `display: none` would hide content in non-supporting readers permanently.
 
 ---
 
-## EPUB Metadata Requirements
+## Heading Treatment
 
-### Language Tags (Required for Validity)
+Headings (`h1`, `h2`, `h3`) must NOT use `<details>`/`<summary>`. Reasons:
+1. HTML5 spec prohibits block-level flow content inside `<summary>`.
+2. Heading semantics must be preserved intact for TOC generation and EPUB navigation.
+3. Chapter title is always contextually necessary — hiding it defeats readability.
 
-- `<dc:language>` in OPF: set to **target language** for translated content (or both if parallel)
-- `xml:lang` attribute on original paragraphs: source language code (e.g., `ru`)
-- `xml:lang` attribute on translated paragraphs: target language code (e.g., `en`)
-- EPUB 3: `lang` attribute on `<html>` element should match primary reading language
+Pattern: always-visible inline translation in a `<span>` inside the heading:
 
-### Accessibility Metadata (EPUB Accessibility 1.1 / EPUB 3)
+```xml
+<h2 class="bt-heading">
+  Глава первая
+  <span class="bt-heading-translation" xml:lang="en" lang="en">Chapter One</span>
+</h2>
+```
 
-| Metadata | Required | Notes |
-|----------|----------|-------|
-| `schema:accessMode` | RECOMMENDED | `textual` for text-only content |
-| `schema:accessibilityFeature` | RECOMMENDED | `readingOrder`, `structuralNavigation` |
-| `schema:accessibilitySummary` | OPTIONAL | Human-readable description |
-| Alt text on images | REQUIRED for accessibility conformance | Pass through from source; translate alt text |
-| ARIA roles | OPTIONAL for v1 | EPUB 3 `epub:type` attributes for landmarks |
+CSS:
 
-### Standard Metadata to Preserve/Update
+```css
+.bt-heading-translation {
+  display: block;
+  font-size: 0.6em;
+  font-weight: normal;
+  font-style: italic;
+  color: #777;
+  margin-top: 0.15em;
+}
+```
 
-| Field | Action | Notes |
-|-------|--------|-------|
-| `dc:title` | Append target language: `Title (EN)` | Don't overwrite original |
-| `dc:creator` | Preserve original author | Do NOT add translator/AI as author |
-| `dc:identifier` | Generate new UUID | Avoid collision with source book's ISBN |
-| `dc:date` | Set to translation date | — |
-| `dc:source` | Set to original book identifier | Provenance |
-| `dc:rights` | Preserve original if present | Do not claim new rights |
-| Cover image | Preserve from source | Optionally overlay language badge |
+`display: block` on a `<span>` makes it render as a sub-line below the original heading text. Legal CSS, works in all EPUB readers. Alternative (use `<p class="bt-heading-translation">` after the heading tag) creates visual detachment — the inline span is preferred.
+
+**Existing code hook:** `html_gen.py` `build_pair_html()` already detects tag name via BeautifulSoup (`tag_name = orig_el.name`). Interactive mode adds a new branch that checks `tag_name in {"h1","h2","h3","h4"}` and emits the span pattern instead of `<details>`.
 
 ---
 
-## CLI Job Status UX: Expected Patterns
+## Semantic Markup
 
-Based on established CLI tools (Celery, rq, ffmpeg, yt-dlp, rsync):
+### epub:type
 
-### Start a Job
-```
-$ translate book.epub --to en --model openai/gpt-5.4-mini
-Job started: job_a1b2c3
-Progress: http://localhost is NOT required — use: translate status job_a1b2c3
-```
+No standard `epub:type` value for "translation" exists in the EPUB 3 Structural Semantics Vocabulary 1.1 (W3C, 2021). The vocabulary covers document structure (chapter, footnote, glossary, etc.), not bilingual/translation pairs.
 
-### Status Check
-```
-$ translate status job_a1b2c3
-Job:       job_a1b2c3
-Status:    running
-Progress:  142 / 1847 paragraphs (7.7%)
-Chapter:   3 / 22
-ETA:       ~38 min
-Started:   2026-05-19 14:22:01
-Model:     openai/gpt-5.4-mini
+**Do NOT use** `epub:type="translation"` — no vocabulary defines it, no reader acts on it, it adds noise.
+
+**Correct mechanism:** `xml:lang` + `lang` on the translation element. That is the spec-defined way to signal language change in EPUB.
+
+```xml
+<p class="bt-translation" xml:lang="en" lang="en">
+  Translation text.
+</p>
 ```
 
-### Completion
-```
-$ translate status job_a1b2c3
-Job:       job_a1b2c3
-Status:    completed
-Output:    ./my_book_en.epub
-Duration:  47m 12s
-Paragraphs: 1847 / 1847 (100%)
-Failed:    0
-```
+Include both `xml:lang` and `lang`: `xml:lang` is required by XML/XHTML processors; `lang` is needed for HTML5-mode parsers (some EPUB reading systems default to HTML5 processing of XHTML files and ignore `xml:lang`).
 
-### Partial / Failed
-```
-$ translate status job_a1b2c3
-Status:    partial
-Progress:  1831 / 1847 paragraphs
-Failed:    16 paragraphs (marked [TRANSLATION FAILED] in output)
-Output:    ./my_book_en_partial.epub
-Resume:    translate retry job_a1b2c3
-```
+### epub namespace (future-proofing note)
 
-### Expected CLI Subcommands
-- `translate run <file> [options]` — start new job
-- `translate status <run_id>` — check job
-- `translate list` — list all jobs
-- `translate cancel <run_id>` — cancel running job
-- `translate retry <run_id>` — retry failed paragraphs only
-- `translate download <run_id> [--output path]` — save completed EPUB
+The EPUB3 namespace for `epub:type` is `xmlns:epub="http://www.idpf.org/2007/ops"`. Current XHTML template in `html_gen.py` uses XHTML 1.1 DOCTYPE without this namespace. Not needed for this milestone since no `epub:type` values are used. If added later, add namespace to `<html>` root in `_XHTML_TEMPLATE`.
+
+### epub:type vs ARIA (important distinction)
+
+The `epub:type` attribute does NOT expose information to assistive technologies. Only ARIA attributes do. `epub:type` was intended to serve a function similar to ARIA `role`, but accessibility support never materialized in practice. Do not use it with accessibility expectations.
 
 ---
 
-## Language Coverage & Tooling Impact
+## Fallback Behavior
 
-### Most Common Fiction Translation Directions (HIGH confidence from training)
+When `<details>` is not supported (older rendering engine, non-HTML5 EPUB reader):
 
-| Direction | Notes |
-|-----------|-------|
-| RU → EN | Large Russian-language fiction corpus; FB2 format prevalence explains FB2 requirement |
-| EN → ES/PT/FR/DE | Western European most requested for LLM APIs |
-| EN → ZH/JA/KO | East Asian languages popular with language learners; CJK requires special handling |
-| EN → AR/FA/HE | RTL languages — require `dir="rtl"` in EPUB paragraphs |
+- The browser/reader renders `<details>` as an **unknown block element** — treated like a `<div>`.
+- `<summary>` similarly rendered as unknown inline/block.
+- **All content inside `<details>` is permanently visible** — both original and translation shown without any interactivity.
+- This is the ideal graceful fallback for a bilingual reading app: worst case is "always bilingual", not "missing content" or "broken layout".
+- No additional CSS or markup needed for fallback — it is automatic by HTML spec for unknown elements.
 
-### Tooling Implications by Language
+**Do NOT** add defensive `display: visible` or `open` attribute to all `<details>` as a fallback guard. That disables the interactive behavior entirely. Trust the native fallback.
 
-| Language Group | Special Requirement | Impact |
-|---------------|---------------------|--------|
-| CJK (ZH/JA/KO) | No word-space tokenization; paragraph length estimation by character count | Prompt engineering: don't ask model to preserve "word count" |
-| RTL (AR/FA/HE) | EPUB `dir` attribute per paragraph; CSS `direction: rtl` | Rendered incorrectly without explicit handling |
-| Languages with gendered grammar (ES/FR/DE/RU) | Character gender must be consistent with smart mode glossary | Glossary should include gender hints for character names |
-| Low-resource languages | Smaller models perform poorly; smart mode glossary helps more | Document model selection guidance |
+Confirmed by MDN and web.dev: unknown elements render their children normally. `<details>` specifically: browsers that do not support it expose all child content including the `<summary>`.
 
 ---
 
-## Feature Complexity Notes
+## Accessibility
 
-| Feature | Complexity | Dependencies | Phase Estimate |
-|---------|-----------|--------------|---------------|
-| EPUB parse + structure extraction | Medium | `ebooklib` or `lxml` | Phase 1 |
-| FB2 / FB2.ZIP parse | Medium | `lxml`, `zipfile` | Phase 1 |
-| TXT / Markdown parse + chapter detection | Low–Medium | Heuristic heading detection | Phase 1 |
-| Paragraph-aligned EPUB output | Medium | `ebooklib`, CSS | Phase 1 |
-| OpenAI-compatible API client | Low | `httpx` or `openai` SDK | Phase 1 |
-| Simple mode (context windowing) | Low | API client | Phase 1 |
-| Persistent job state (disk) | Medium | SQLite or JSON files | Phase 1 |
-| CLI subcommands + run IDs | Low | `click` or `typer` | Phase 1 |
-| Progress tracking | Low | Job state store | Phase 1 |
-| Resume / checkpoint recovery | Medium | Job state store | Phase 1 |
-| Retry failed paragraphs | Low | Job state store | Phase 1 |
-| Smart mode: book pre-analysis | High | LLM + paragraph extraction | Phase 2 |
-| Smart mode: glossary extraction | High | LLM structured output | Phase 2 |
-| Smart mode: enriched prompts | Medium | Glossary + context injection | Phase 2 |
-| Multiple target languages | Medium | Job state + multi-pass | Phase 2 |
-| RTL language support in EPUB | Low | CSS + `xml:lang` | Phase 2 |
-| CJK paragraph handling | Low | Character-count estimation | Phase 2 |
-| EPUB accessibility metadata | Low | OPF metadata writer | Phase 1–2 |
-| Language tag assignment | Low | OPF + paragraph markup | Phase 1 |
+### Native semantics (no extra markup needed for basic a11y)
+
+`<details>`/`<summary>` expose native ARIA semantics automatically in compliant browsers:
+- `<summary>` maps to `role="button"` with `aria-expanded` state (true when open, false when closed).
+- Screen readers announce the toggle state automatically.
+- No manual `aria-expanded` needed when using native elements — it is implied.
+
+### Recommended enhancement: aria-label on summary
+
+```xml
+<details class="bt-interactive">
+  <summary class="bt-original" aria-label="Original text. Tap to reveal translation.">
+    Оригинальный текст предложения.
+  </summary>
+  <p class="bt-translation" xml:lang="en" lang="en">
+    Original sentence text.
+  </p>
+</details>
+```
+
+Without `aria-label`, a screen reader announces the full original text followed by "button, collapsed" — for long paragraphs this is verbose. `aria-label` provides a shorter purposeful announcement. Optional but recommended.
+
+### Reading order
+
+`<details>` places translation after original in DOM order. When opened, assistive technology reads: original → translation. Correct order for language learners (understand original first, check translation second).
+
+### epub:type vs ARIA note
+
+Per EPUB Type to ARIA Role Authoring Guide 1.1 (W3C): reading systems use `epub:type` to offer special features; `role` attribute exposes information to assistive technology. For a11y, use ARIA, not `epub:type`.
+
+---
+
+## Open-by-Default Consideration
+
+**Recommendation:** Set `open="open"` on the **first `<details>` of each chapter only**.
+
+Rationale:
+- Zero open paragraphs: readers may not discover the mechanic — the file looks like an original-only EPUB.
+- All open by default: defeats the purpose entirely; reader must close each one to read normally.
+- First paragraph open per chapter: reader sees the pattern immediately on entering each chapter; one interaction teaches the mechanic; subsequent paragraphs are collapsed.
+
+**Implementation:** The assembler tracks whether the current paragraph is the first content paragraph of a chapter. Pass a boolean `first_in_chapter` to `build_interactive_html()`. Emit `open="open"` only when true.
+
+Note: XML requires `open="open"` not bare `open` (HTML5 boolean attribute syntax is not valid XML).
+
+---
+
+## Table Stakes vs Differentiators
+
+### Table Stakes (must-have for mode to be usable)
+
+| Feature | Reason | Complexity |
+|---------|--------|------------|
+| `<details>`/`<summary>` paragraph wrapping | Core mechanic — nothing works without it | Low |
+| CSS triangle removal (3-rule set) | Without removal, default triangle looks broken and inconsistent across readers | Low |
+| Custom indicator via `::before` | Users need a visible affordance; bare text looks unclickable | Low |
+| Heading inline span pattern | Headings cannot use `<details>`; must still show translation | Low |
+| `xml:lang` + `lang` on translation | Correct language metadata for EPUB spec compliance | Low |
+| Pass-through for image/table | Existing behavior preserved | None (already exists) |
+| Graceful fallback (content always visible) | Content must never disappear — worst case is "always visible" | Free (by spec) |
+| First-paragraph open-by-default | Discoverability — users must learn the mechanic exists | Low |
+
+### Differentiators (valued but not blocking)
+
+| Feature | Value | Complexity |
+|---------|-------|------------|
+| Per-sentence granularity (not just per-paragraph) | Finer-grained learning UX for dense text | Already built in v2; reuse `sentence_chunk_texts` |
+| `aria-label` on `<summary>` | Accessibility for screen reader users | Low |
+| Italics + indent + border-left on translation | Visual hierarchy signals "this is secondary/translation" | Low (CSS only) |
+
+### Anti-Features (explicitly avoid)
+
+| Anti-Feature | Why Avoid | Alternative |
+|--------------|-----------|-------------|
+| JavaScript toggle | Breaks on Kobo eInk, violates project constraint (zero `<script>` tags) | CSS-only `<details>` native behavior |
+| `epub:type="translation"` | No vocab defines it, no reader acts on it | Use `xml:lang` only |
+| `display: none` on `.bt-translation` as guard | Hides content permanently in non-supporting readers | Trust native `<details>` fallback |
+| CSS `transition`/`animation` | Unreliable in eInk readers; adds no learning value | Skip all animation |
+| Nested `<details>` | Confusing UX, no benefit | Flat structure only |
+| Block elements (`<p>`, `<div>`) inside `<summary>` | Violates HTML5 spec content model for `<summary>` | Plain text or `<span>` inline only |
+
+---
+
+## Dependencies on Existing Code
+
+| Existing Component | Change | Stays Same |
+|-------------------|--------|------------|
+| `html_gen.py` `build_pair_html()` | New branch: `mode == "interactive"` → emit `<details>` structure. Heading detection already works via `tag_name = orig_el.name` — add `h1/h2/h3` check for span pattern | Pass-through logic, `_inject_class`, `_prefix_ids` |
+| `html_gen.py` `_XHTML_TEMPLATE` | No change needed for this milestone (no `epub:type` used) | Unchanged |
+| `style.css` (bundled) | Append `.bt-interactive` CSS block | Existing `.bt-pair`, `.bt-orig`, `.bt-trans` rules untouched |
+| `Paragraph` model | May need `is_first_in_chapter: bool` OR assembler tracks chapter position externally | `sentence_chunk_texts`, `sentence_translations` reused as-is |
+| CLI `--mode` flag | Add `"interactive"` as valid Typer enum value | Existing per-page/per-sentence/monolingual unchanged |
+| Assembler chapter loop | Track first paragraph per chapter; pass flag to render function | EPUB packaging, OPF, spine unchanged |
+
+`sentence_chunk_texts` from v2 (`para.sentence_chunk_texts`) is already populated for per-sentence mode — no re-splitting needed at render time for interactive per-sentence output.
 
 ---
 
 ## Sources
 
-- Calibre-Translate plugin (GitHub): feature set derived from training knowledge; plugin supports DeepL/Google backends, not LLM-based — HIGH confidence on feature categories, LOW confidence on exact current feature set
-- DeepL document translation: supports DOCX, PPTX, PDF (limited); EPUB not natively supported as of training cutoff — MEDIUM confidence (verify current DeepL API docs)
-- EPUB 3.3 Specification (W3C, 2023): `dc:language`, `xml:lang`, `epub:type`, spine structure — HIGH confidence
-- EPUB Accessibility 1.1 (W3C): `schema:accessMode`, `schema:accessibilityFeature` — HIGH confidence
-- CLI UX patterns: Celery (`celery inspect`), rq (`rq info`), yt-dlp progress bar — HIGH confidence (training)
-- LLM translation quality for fiction: community reports on prompt engineering for consistent translation — MEDIUM confidence
+- [MDN: details element](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/details)
+- [MDN: summary element](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/summary)
+- [CSS-Tricks: Using & Styling the Details Element](https://css-tricks.com/using-styling-the-details-element/)
+- [justmarkup: Styling the details element](https://justmarkup.com/articles/2020-09-22-styling-and-animation-details/)
+- [Scott O'Hara: The details and summary elements](https://www.scottohara.me/blog/2022/09/12/details-summary.html)
+- [web.dev: Details and summary](https://web.dev/learn/html/details)
+- [freeCodeCamp: How to remove ::marker from details CSS](https://forum.freecodecamp.org/t/how-to-remove-marker-from-details-css/462658)
+- [EPUB 3 Structural Semantics Vocabulary 1.1](https://www.w3.org/TR/epub-ssv-11/)
+- [EPUB Type to ARIA Role Authoring Guide 1.1](https://www.w3.org/TR/epub-aria-authoring-11/)
+- [DAISY: epub:type attribute](https://kb.daisy.org/publishing/docs/html/epub-type.html)
+- [Kobo EPUB Spec](https://github.com/kobolabs/epub-spec)
+- [HTMHell: How HTML changes in ePub](https://www.htmhell.dev/adventcalendar/2025/11/)
+- [EDRLab: Allow pure HTML5 in EPUB 3?](https://www.edrlab.org/2025/07/06/allow-pure-html5-in-epub-3/)
