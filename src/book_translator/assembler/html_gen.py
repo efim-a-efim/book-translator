@@ -100,8 +100,9 @@ def build_pair_html(para: Paragraph) -> str:
         pairs = []
         pair_count = min(len(source_texts), len(para.sentence_translations))
         for i in range(pair_count):
-            pairs.append(f'<p class="bt-orig">{_html.escape(source_texts[i])}</p>')
+            # Target-first ordering: translation (bt-trans) before source (bt-orig).
             pairs.append(f'<p class="bt-trans">{_html.escape(para.sentence_translations[i])}</p>')
+            pairs.append(f'<p class="bt-orig">{_html.escape(source_texts[i])}</p>')
         return f'<div class="bt-pair">\n' + '\n'.join(pairs) + f'\n</div>'
     
     trans_text = _html.escape(para.translation or "")
@@ -114,7 +115,8 @@ def build_pair_html(para: Paragraph) -> str:
 
     trans_html = f'<{tag_name} class="bt-trans">{trans_text}</{tag_name}>'
 
-    return f'<div class="bt-pair">\n{orig_html}\n{trans_html}\n</div>'
+    # Target-first ordering: translation before source inside the pair div.
+    return f'<div class="bt-pair">\n{trans_html}\n{orig_html}\n</div>'
 
 
 def build_interactive_html(
@@ -143,12 +145,16 @@ def build_interactive_html(
         if para.translation:
             trans = _html.escape(para.translation)
             safe_lang = _html.escape(target_lang)
+            # Target-first: translation is the primary heading text; the source
+            # now lives in the secondary span. NOTE: the span carries SOURCE text
+            # now, but safe_lang still reflects target_lang (only lang available
+            # in this signature) — the secondary span lang is cosmetic.
             span = (
                 f'<span class="bt-heading-translation"'
                 f' xml:lang="{safe_lang}" lang="{safe_lang}">'
-                f"{trans}</span>"
+                f"{escaped_text}</span>"
             )
-            return f"<h2>{escaped_text}{span}</h2>"
+            return f"<h2>{trans}{span}</h2>"
         return f"<h2>{escaped_text}</h2>"
 
     # paragraph / caption / footnote  (INTR-06, INTR-08)
@@ -156,11 +162,19 @@ def build_interactive_html(
     trans = _html.escape(para.translation or "")
     safe_lang = _html.escape(target_lang)
     open_attr = ' open="open"' if is_first else ""   # INTR-07: XML attribute form
+    # Target-first / target-default-visible: the always-visible <summary> now
+    # carries the TARGET translation, the collapsible <p> carries the SOURCE.
+    # The class names (bt-original / bt-translation) are STRUCTURAL CSS hooks
+    # (_INTERACTIVE_CSS keys off summary.bt-original and .bt-translation), NOT
+    # language indicators — only the CONTENT each element carries is swapped,
+    # so no CSS changes are needed.
     return (
         f'<details class="bt-interactive"{open_attr}>'
-        f'<summary class="bt-original">{prefixed_orig}</summary>'
-        f'<p class="bt-translation"'
-        f' xml:lang="{safe_lang}" lang="{safe_lang}">{trans}</p>'
+        f'<summary class="bt-original"'
+        f' xml:lang="{safe_lang}" lang="{safe_lang}">{trans}</summary>'
+        # <div> (not <p>) wraps the SOURCE: prefixed_orig is a full block element
+        # (e.g. <p>…</p>) and nesting it in a <p> would be invalid/auto-closed.
+        f'<div class="bt-translation">{prefixed_orig}</div>'
         f"</details>"
     )
 

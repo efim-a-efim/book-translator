@@ -84,6 +84,8 @@ def test_build_pair_html_paragraph():
     assert "bt-orig" in result
     assert "bt-trans" in result
     assert "Привет" in result
+    # Target-first ordering: translation precedes source.
+    assert result.index("bt-trans") < result.index("bt-orig")
 
 
 def test_build_pair_html_passthrough_image():
@@ -251,6 +253,8 @@ def test_build_pair_html_sentence_translations():
     # Should have bt-orig and bt-trans for each sentence
     assert result.count("bt-orig") == 2
     assert result.count("bt-trans") == 2
+    # Target-first ordering: first emitted pair element is the translation.
+    assert result.index("bt-trans") < result.index("bt-orig")
 
 
 def test_build_pair_html_sentence_translations_partial():
@@ -513,10 +517,15 @@ class TestBuildInteractiveHtml:
         summary = details.find("summary")
         assert summary is not None
         assert "bt-original" in summary.get("class", [])
-        # find translation <p> by class (not the first <p> inside summary)
-        p_trans = details.find("p", class_="bt-translation")
-        assert p_trans is not None, "Expected <p class='bt-translation'> inside <details>"
-        assert p_trans.get("lang") == "ru"
+        # Target-default-visible: summary (visible) now carries the TARGET
+        # translation; lang attrs moved onto the summary.
+        assert "Привет" in summary.get_text()
+        assert summary.get("lang") == "ru"
+        # The collapsible bt-translation element (now a <div>, since it wraps a
+        # block-level <p> source) carries the SOURCE original text.
+        src_body = details.find(class_="bt-translation")
+        assert src_body is not None, "Expected element with class 'bt-translation' inside <details>"
+        assert "Hello" in src_body.get_text()
 
     # Test 5: is_first=True adds open="open" (INTR-07)
     def test_is_first_adds_open_attr(self):
@@ -563,6 +572,11 @@ class TestBuildInteractiveHtml:
         assert span is not None
         assert "bt-heading-translation" in span.get("class", [])
         assert span.get("xml:lang") == "ru" or span.get("lang") == "ru"
+        # Target-first: primary h2 text is the TARGET translation; the SOURCE
+        # text now lives in the secondary span.
+        h2_text = h2.get_text()
+        assert h2_text.index("Глава Один") < h2_text.index("Chapter One")
+        assert "Chapter One" in span.get_text()
 
     # Test 10: ID prefixing confirms _prefix_ids ran (INTR-18)
     def test_id_prefixed_in_summary(self):
@@ -579,6 +593,9 @@ class TestBuildInteractiveHtml:
         summary = soup.find("summary")
         assert summary is not None
         assert summary.get_text(strip=True) != ""
-        p_trans = soup.find("p", class_="bt-translation")
-        assert p_trans is not None
-        assert "Привет" in p_trans.get_text()
+        # Target-default-visible: visible summary holds the TARGET translation.
+        assert "Привет" in summary.get_text()
+        # Collapsible bt-translation element holds the SOURCE original text.
+        src_body = soup.find(class_="bt-translation")
+        assert src_body is not None
+        assert "Hello" in src_body.get_text()
