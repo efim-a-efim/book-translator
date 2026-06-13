@@ -33,7 +33,7 @@ See: `.planning/PROJECT.md` (updated 2026-06-12)
 Phase: 12 (CSS + CLI Integration) — COMPLETE
 Plan: Not started
 Status: Phase complete
-Last activity: 2026-06-12
+Last activity: 2026-06-12 - Completed quick task 260612-se3: Swap language order (target first)
 
 ## Phase Progress
 
@@ -75,6 +75,7 @@ Overall: 2/2 phases complete [████████████████�
 |----|-------------|------|--------|-----------|
 | 260604-kax | Add progress output to `-v` | 2026-06-04 | 5d4c3ef | [260604-kax-add-progress-output-to-v](./quick/260604-kax-add-progress-output-to-v/) |
 | 260604-l64 | Add batching for paragraphs translation | 2026-06-04 | 487842f | [260604-l64-add-batching-for-paragraphs-translation](./quick/260604-l64-add-batching-for-paragraphs-translation/) |
+| 260612-se3 | Swap language order: target first, source after (interactive: target visible by default) | 2026-06-12 | 6dd97b7 | [260612-se3-swap-language-order](./quick/260612-se3-swap-language-order/) |
 
 ## Performance Metrics
 
