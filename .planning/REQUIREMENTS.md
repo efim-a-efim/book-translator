@@ -46,23 +46,23 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CLI-01 | TBD | Pending |
-| CLI-02 | TBD | Pending |
-| CLI-03 | TBD | Pending |
-| CLI-04 | TBD | Pending |
-| CLI-05 | TBD | Pending |
-| RUN-01 | TBD | Pending |
-| RUN-02 | TBD | Pending |
-| RUN-03 | TBD | Pending |
-| RUN-04 | TBD | Pending |
-| RUN-05 | TBD | Pending |
-| RUN-06 | TBD | Pending |
+| CLI-01 | Phase 13 | Pending |
+| CLI-02 | Phase 13 | Pending |
+| CLI-03 | Phase 13 | Pending |
+| CLI-04 | Phase 13 | Pending |
+| CLI-05 | Phase 13 | Pending |
+| RUN-01 | Phase 13 | Pending |
+| RUN-02 | Phase 13 | Pending |
+| RUN-03 | Phase 13 | Pending |
+| RUN-04 | Phase 13 | Pending |
+| RUN-05 | Phase 13 | Pending |
+| RUN-06 | Phase 13 | Pending |
 
 **Coverage:**
 - v4 requirements: 11 total
-- Mapped to phases: 0 (set during roadmap)
-- Unmapped: 11 ⚠️ (resolved by roadmapper)
+- Mapped to phases: 11 (all → Phase 13) ✓
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-06-15*
-*Last updated: 2026-06-15 after v4 milestone definition*
+*Last updated: 2026-06-15 after v4 roadmap creation*

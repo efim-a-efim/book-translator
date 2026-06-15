@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v4
 milestone_name: CLI Tool Polishing
 status: planning
-last_updated: "2026-06-15T18:14:16.197Z"
+last_updated: "2026-06-15T18:30:00.000Z"
 last_activity: 2026-06-15
 progress:
-  total_phases: 0
+  total_phases: 1
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -15,9 +15,9 @@ progress:
 
 # Project State
 
-**Current Milestone:** v3 Interactive Parallel EPUB
-**Current Phase:** 12
-**Status:** v3 milestone complete — awaiting next milestone
+**Current Milestone:** v4 CLI Tool Polishing
+**Current Phase:** 13 (not started)
+**Status:** Roadmap created — awaiting phase planning
 **Last Updated:** 2026-06-15
 
 ## Project Reference
@@ -25,22 +25,21 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-15)
 
 **Core value:** A reader opens the output EPUB in any EPUB app and can follow the story paragraph-by-paragraph, seeing original and translated text together — without any special reader software.
-**Current focus:** Planning next milestone (`/gsd-new-milestone`)
+**Current focus:** v4 — make book-translator a single-command, fully ephemeral CLI tool.
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 13 — Single-Command Ephemeral CLI (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-06-15 — Milestone v4 started
+Status: Roadmap created, ready for `/gsd-plan-phase 13`
+Last activity: 2026-06-15 — v4 roadmap created (1 phase, 11/11 requirements mapped)
 
 ## Phase Progress
 
 ```
-Phase 11: HTML Generation Engine  [x] Complete  (2/2 plans)
-Phase 12: CSS + CLI Integration   [x] Complete  (2/2 plans)
+Phase 13: Single-Command Ephemeral CLI  [ ] Not started  (0/? plans)
 
-Overall: 2/2 phases complete [████████████████████] 100%
+v4 Overall: 0/1 phases complete [░░░░░░░░░░░░░░░░░░░░] 0%
 ```
 
 ## v1 Milestone (closed)
@@ -61,18 +60,24 @@ Overall: 2/2 phases complete [████████████████�
 - 2 phases complete (11–12), 19/19 requirements satisfied
 - Archived to `.planning/milestones/v3-ROADMAP.md` + `v3-REQUIREMENTS.md`
 
+## v4 Milestone (planning)
+
+- Started 2026-06-15
+- Goal: single-command, fully ephemeral CLI tool
+- 1 phase (13), 11 requirements (CLI-01..05, RUN-01..06), all mapped
+- Numbering: continues from v3 (last phase 12 → first v4 phase 13)
+
 ## Accumulated Context
 
-### Key Decisions (v3 — pre-implementation)
+### Key Decisions (v4 — pre-implementation)
 
-- CSS-only `<details>`/`<summary>` — no JavaScript anywhere for compatibility and security
-- Paragraphs use `<details>`: original in `<summary>`, translation revealed on tap
-- Headings use always-visible inline span: short enough that both are acceptable always-visible
-- Graceful fallback: readers without `<details>` support see both texts (no content loss)
-- `--mode interactive` rejects `--output-format` other than epub (exit code 2)
-- `build_interactive_html()` assembled after all BS4/lxml processing (INTR-18 constraint)
-- CSS uses `\25B6`/`\25BC` escapes, passed as `.encode("utf-8")` to EpubItem (INTR-15, INTR-16)
-- Phase 11 delivers HTML engine (11 requirements); Phase 12 delivers CSS+CLI surface (8 requirements)
+- Single phase (13): coarse granularity + the work is a focused refactor of one file (`src/book_translator/cli.py`) plus its `JobStore`; CLI-surface and ephemeral-runs work are tightly coupled (same file, shared dead-code removal), so splitting would create an artificial boundary.
+- Collapse `@app.command(name="translate")` into the Typer root command; remove `list_cmd` and `cleanup_cmd`.
+- `JobStore` base moves from `~/.local/share/book-translator/runs` to system temp via `tempfile` (honor `$TMPDIR`).
+- Run dir path printed on every run by default (currently only under `--verbose` at cli.py:214-215).
+- Currently success auto-deletes (D-18, cli.py:304) but failure RETAINS (cli.py:312/321/326); RUN-04 flips failure to delete-by-default.
+- New `--preserve-temp` flag: retain run dir on success AND failure, and print a "preserved" message.
+- Likely dead code after this phase: `JobStore.list_runs`, `list_run_metas`, `TERMINAL_STATES`, `STATE_UNKNOWN` (only used by removed `list`/`cleanup`).
 
 ## Quick Tasks Completed
 
@@ -85,26 +90,6 @@ Overall: 2/2 phases complete [████████████████�
 | 260615-dkx | Rename CLI options: `--mode per-page\|per-sentence` → `--granularity page\|sentence`; `--output-mode` → `--mode` (pure rename, logic unchanged) | 2026-06-15 | f8d7ee2 | [260615-dkx-rename-cli-options-mode-per-page-per-sen](./quick/260615-dkx-rename-cli-options-mode-per-page-per-sen/) |
 | 260615-eff | Fix github account name from `aefimov` to `efim-a-efim` (URLs in pyproject.toml + README.md) | 2026-06-15 | 27cbb2d | [260615-eff-fix-github-account-name-from-aefimov-to-](./quick/260615-eff-fix-github-account-name-from-aefimov-to-/) |
 
-## Performance Metrics
-
-| Phase | Plan | Duration | Notes |
-|-------|------|----------|-------|
-| Phase 11 P01 | 200 | 2 tasks | 2 files |
-| Phase 11 P02 | 420 | 2 tasks | 2 files |
-| Phase 12 P01 | 5 | 2 tasks | 2 files |
-| Phase 12 P02 | 10 | 3 tasks | 4 files |
-
-## Decisions
-
-- [Phase ?]: HTML5 DOCTYPE fix and build_interactive_html implementation
-- [Phase ?]: BS4 processing order constraint
-- [Phase ?]: builder.py
-- [Phase ?]: _INTERACTIVE_CSS defined at module level in builder.py (D-12)
-- [Phase ?]: Double-backslash Python source produces single-backslash CSS escape for ebooklib safety (INTR-15)
-- [Phase 12-02]: VALID_MODES = {per-page, per-sentence, monolingual, interactive} (D-01)
-- [Phase 12-02]: --output-format, VALID_OUTPUT_FORMATS, FORMAT_TO_EXT removed from cli.py (D-02)
-- [Phase 12-02]: assemble_monolingual() simplified to epub-only; txt/md dead code removed (D-04)
-
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Plan Phase 13 with `/gsd-plan-phase 13`
