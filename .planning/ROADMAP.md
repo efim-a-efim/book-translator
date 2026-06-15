@@ -92,4 +92,4 @@ See: `.planning/milestones/v3-ROADMAP.md`
 | 10.2. Fix MONO-02 + MONO-04 | v2 | 1/1 | ✓ Complete | 2026-06-11 |
 | 11. HTML Generation Engine | v3 | 2/2 | ✓ Complete | 2026-06-12 |
 | 12. CSS + CLI Integration | v3 | 2/2 | ✓ Complete | 2026-06-12 |
-| 13. Single-Command Ephemeral CLI | v4 | 2/2 | Complete   | 2026-06-15 |
+| 13. Single-Command Ephemeral CLI | v4 | 2/2 | Complete    | 2026-06-15 |
