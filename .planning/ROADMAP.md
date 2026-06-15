@@ -54,17 +54,24 @@ See: `.planning/milestones/v3-ROADMAP.md`
 ## Phase Details
 
 ### Phase 13: Single-Command Ephemeral CLI
+
 **Goal**: book-translator is a single root command that runs one synchronous translation entirely in system temp, always reports the run directory, and leaves no on-disk state behind unless the user opts to preserve it for debugging.
 **Depends on**: Phase 12 (existing Typer CLI + JobStore)
 **Requirements**: CLI-01, CLI-02, CLI-03, CLI-04, CLI-05, RUN-01, RUN-02, RUN-03, RUN-04, RUN-05, RUN-06
 **Success Criteria** (what must be TRUE):
+
   1. User runs `book-translator INPUT --source-lang en --target-lang ru` with no subcommand and gets a translated EPUB, and every former `translate` option (`--model`, `--api-key`, `--base-url`, `--output`, `--context-window`, `--concurrency`, `--max-retries`, `--verbose`, `--debug`, `--granularity`, `--mode`, `--batch-token-budget`) works on the root command.
   2. `book-translator --help` shows the single-command usage (input argument + options) with no subcommand list, and invoking `book-translator list` or `book-translator cleanup` is not a recognized command.
   3. Every run creates its working directory under the system temp location (via `tempfile`, honoring `$TMPDIR`) — nothing is written under `~/.local/share/book-translator/runs` — and the run directory path is printed on every run by default (not gated behind `--verbose`).
   4. After a successful run the run directory no longer exists on disk, and after a failed run (parse or translation error) the run directory is also removed.
-  5. With `--preserve-temp`, the run directory still exists after the run (whether it succeeded or failed) and the output clearly states the path was preserved.
-**Plans**: 2 plans
+  5. With `--preserve-temp`, the run directory still exists after the run (whether it succeeded or failed) and the output clearly states the path was preserved.**Plans**: 2 plans
+
+**Wave 1**
+
 - [ ] 13-01-PLAN.md — Rewrite cli.py to a single ephemeral root command; delete the persistence machinery (store/job_store.py, models/job.py)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 13-02-PLAN.md — Rewrite the test suite: drop the `translate` token, delete store/list/cleanup tests, add ephemeral behavioral tests
 
 ## Progress
