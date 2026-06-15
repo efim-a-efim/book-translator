@@ -78,7 +78,7 @@ Overall: 2/2 phases complete [████████████████�
 | 260612-se3 | Swap language order: target first, source after (interactive: target visible by default) | 2026-06-12 | 6dd97b7 | [260612-se3-swap-language-order](./quick/260612-se3-swap-language-order/) |
 | 260615-c0w | Split interactive/monolingual output off `--mode` into new `--output-mode` flag; `--mode` now granularity-only | 2026-06-15 | 256998a | [260615-c0w-split-interactive-books-generation-from-](./quick/260615-c0w-split-interactive-books-generation-from-/) |
 | 260615-dkx | Rename CLI options: `--mode per-page\|per-sentence` → `--granularity page\|sentence`; `--output-mode` → `--mode` (pure rename, logic unchanged) | 2026-06-15 | f8d7ee2 | [260615-dkx-rename-cli-options-mode-per-page-per-sen](./quick/260615-dkx-rename-cli-options-mode-per-page-per-sen/) |
-| 260615-eff | Fix github account name from `aefimov` to `efim-a-efim` (URLs in pyproject.toml + README.md) | 2026-06-15 | 8b09a0e | [260615-eff-fix-github-account-name-from-aefimov-to-](./quick/260615-eff-fix-github-account-name-from-aefimov-to-/) |
+| 260615-eff | Fix github account name from `aefimov` to `efim-a-efim` (URLs in pyproject.toml + README.md) | 2026-06-15 | 27cbb2d | [260615-eff-fix-github-account-name-from-aefimov-to-](./quick/260615-eff-fix-github-account-name-from-aefimov-to-/) |
 
 ## Performance Metrics
 
