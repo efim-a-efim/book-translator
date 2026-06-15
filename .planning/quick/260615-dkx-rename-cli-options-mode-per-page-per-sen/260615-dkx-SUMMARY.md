@@ -1,5 +1,6 @@
 ---
 phase: quick-260615-dkx
+status: complete
 plan: 01
 subsystem: cli
 tags: [cli, rename, refactor]

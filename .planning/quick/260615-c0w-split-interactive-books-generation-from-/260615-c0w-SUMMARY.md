@@ -1,5 +1,6 @@
 ---
 phase: quick-260615-c0w
+status: complete
 plan: 01
 subsystem: cli + assembler
 tags: [cli, output-mode, interactive, html-gen, tdd]

@@ -1,6 +1,6 @@
 ---
 trigger: "I receive epub document with `[TRANSLATION FAILED]` messages instead of translations. Command line was: `book-translator translate -s ru -t es -m 'tencent/hy3-preview' -v ./dalin_o_lyudah.epub`"
-status: reopened-then-fixed
+status: resolved
 created: 2026-06-04
 updated: 2026-06-04
 ---

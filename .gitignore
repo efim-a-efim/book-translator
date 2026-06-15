@@ -29,3 +29,6 @@ htmlcov/
 .tox/
 .nox/
 tmp/
+sample.*.epub
+sample.*.txt
+sample.*.md

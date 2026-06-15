@@ -1,5 +1,6 @@
 ---
 phase: quick-260612-se3
+status: complete
 plan: 01
 subsystem: assembler
 tags: [html-gen, interactive, bilingual, ordering]
