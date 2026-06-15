@@ -2,23 +2,23 @@
 gsd_state_version: 1.0
 milestone: v4
 milestone_name: CLI Tool Polishing
-current_phase: 13 (not started)
-status: planning
-last_updated: "2026-06-15T18:54:24.045Z"
-last_activity: 2026-06-15 — v4 roadmap created (1 phase, 11/11 requirements mapped)
+current_phase: 13
+status: executing
+last_updated: "2026-06-15T19:05:51.046Z"
+last_activity: 2026-06-15 -- Phase 13 execution started
 progress:
   total_phases: 1
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 2
+  completed_plans: 1
   percent: 0
 ---
 
 # Project State
 
 **Current Milestone:** v4 CLI Tool Polishing
-**Current Phase:** 13 (not started)
-**Status:** Roadmap created — awaiting phase planning
+**Current Phase:** 13
+**Status:** Ready to execute
 **Last Updated:** 2026-06-15
 
 ## Project Reference
@@ -26,14 +26,14 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-15)
 
 **Core value:** A reader opens the output EPUB in any EPUB app and can follow the story paragraph-by-paragraph, seeing original and translated text together — without any special reader software.
-**Current focus:** v4 — make book-translator a single-command, fully ephemeral CLI tool.
+**Current focus:** Phase 13 — single-command-ephemeral-cli
 
 ## Current Position
 
-Phase: 13 — Single-Command Ephemeral CLI (not started)
-Plan: —
-Status: Roadmap created, ready for `/gsd-plan-phase 13`
-Last activity: 2026-06-15 — v4 roadmap created (1 phase, 11/11 requirements mapped)
+Phase: 13 (single-command-ephemeral-cli) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-06-15 -- Phase 13 execution started
 
 ## Phase Progress
 
@@ -94,3 +94,15 @@ v4 Overall: 0/1 phases complete [░░░░░░░░░░░░░░░�
 ## Operator Next Steps
 
 - Plan Phase 13 with `/gsd-plan-phase 13`
+
+## Performance Metrics
+
+| Phase | Plan | Duration | Notes |
+|-------|------|----------|-------|
+| Phase 13 P01 | 5min | 2 tasks | 4 files |
+
+## Decisions
+
+- [Phase ?]: Renamed translate_cmd to main with @app.command(); single command auto-promotes to Typer root; entrypoint cli:app unchanged
+- [Phase ?]: Run dir is ephemeral tempfile.mkdtemp under TMPDIR; deleted on success and failure unless --preserve-temp (debug implies preserve); run_id dropped
+- [Phase ?]: Deleted JobStore/JobMeta and store/ package; persistence machinery fully removed

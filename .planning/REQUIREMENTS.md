@@ -9,20 +9,20 @@ Requirements for the v4 milestone. Each maps to a roadmap phase.
 
 ### CLI Surface
 
-- [ ] **CLI-01**: User runs translation as a single root command — `book-translator INPUT --source-lang ... --target-lang ...` — with no `translate` subcommand
-- [ ] **CLI-02**: All options formerly on the `translate` subcommand are available directly on the root command (input file, `--source-lang`, `--target-lang`, `--model`, `--api-key`, `--base-url`, `--output`, `--context-window`, `--concurrency`, `--max-retries`, `--verbose`, `--debug`, `--granularity`, `--mode`, `--batch-token-budget`)
-- [ ] **CLI-03**: The `list` subcommand is removed
-- [ ] **CLI-04**: The `cleanup` subcommand is removed
-- [ ] **CLI-05**: `book-translator --help` shows single-command usage (input argument + options), with no subcommand list
+- [x] **CLI-01**: User runs translation as a single root command — `book-translator INPUT --source-lang ... --target-lang ...` — with no `translate` subcommand
+- [x] **CLI-02**: All options formerly on the `translate` subcommand are available directly on the root command (input file, `--source-lang`, `--target-lang`, `--model`, `--api-key`, `--base-url`, `--output`, `--context-window`, `--concurrency`, `--max-retries`, `--verbose`, `--debug`, `--granularity`, `--mode`, `--batch-token-budget`)
+- [x] **CLI-03**: The `list` subcommand is removed
+- [x] **CLI-04**: The `cleanup` subcommand is removed
+- [x] **CLI-05**: `book-translator --help` shows single-command usage (input argument + options), with no subcommand list
 
 ### Ephemeral Runs
 
-- [ ] **RUN-01**: The run working directory is created under the system temp location (via `tempfile`, honoring `$TMPDIR`), not under `~/.local/share/book-translator/runs`
-- [ ] **RUN-02**: The run directory path is printed only when the user is in a debugging posture — i.e. when at least one of `--verbose`, `--debug`, or `--preserve-temp` is set. A clean default run prints nothing about the temp path. *(Amended 2026-06-15 during Phase 13 discussion — originally "printed on every run"; flipped because the dir is deleted at the end of a clean run, so an always-printed path would point at nothing.)*
-- [ ] **RUN-03**: On a successful run, the run directory is deleted after the output EPUB is written — unless a preserve flag is active (`--preserve-temp`, or `--debug` which implies it)
-- [ ] **RUN-04**: On a failed run (parse or translation error), the run directory is also deleted — unless a preserve flag is active (`--preserve-temp`, or `--debug` which implies it)
-- [ ] **RUN-05**: When `--preserve-temp` is set, the run directory is retained after the run (success or failure). `--debug` implicitly enables `--preserve-temp`. *(Amended 2026-06-15 — added `--debug ⇒ --preserve-temp` coupling so debug runs keep the dir for inspection.)*
-- [ ] **RUN-06**: When the run directory is preserved (via `--preserve-temp` or `--debug`), the output clearly states the path was preserved; when preservation was auto-enabled by `--debug`, the output notes that `--debug` implies `--preserve-temp`
+- [x] **RUN-01**: The run working directory is created under the system temp location (via `tempfile`, honoring `$TMPDIR`), not under `~/.local/share/book-translator/runs`
+- [x] **RUN-02**: The run directory path is printed only when the user is in a debugging posture — i.e. when at least one of `--verbose`, `--debug`, or `--preserve-temp` is set. A clean default run prints nothing about the temp path. *(Amended 2026-06-15 during Phase 13 discussion — originally "printed on every run"; flipped because the dir is deleted at the end of a clean run, so an always-printed path would point at nothing.)*
+- [x] **RUN-03**: On a successful run, the run directory is deleted after the output EPUB is written — unless a preserve flag is active (`--preserve-temp`, or `--debug` which implies it)
+- [x] **RUN-04**: On a failed run (parse or translation error), the run directory is also deleted — unless a preserve flag is active (`--preserve-temp`, or `--debug` which implies it)
+- [x] **RUN-05**: When `--preserve-temp` is set, the run directory is retained after the run (success or failure). `--debug` implicitly enables `--preserve-temp`. *(Amended 2026-06-15 — added `--debug ⇒ --preserve-temp` coupling so debug runs keep the dir for inspection.)*
+- [x] **RUN-06**: When the run directory is preserved (via `--preserve-temp` or `--debug`), the output clearly states the path was preserved; when preservation was auto-enabled by `--debug`, the output notes that `--debug` implies `--preserve-temp`
 
 ## Future Requirements
 
@@ -46,19 +46,20 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CLI-01 | Phase 13 | Pending |
-| CLI-02 | Phase 13 | Pending |
-| CLI-03 | Phase 13 | Pending |
-| CLI-04 | Phase 13 | Pending |
-| CLI-05 | Phase 13 | Pending |
-| RUN-01 | Phase 13 | Pending |
-| RUN-02 | Phase 13 | Pending |
-| RUN-03 | Phase 13 | Pending |
-| RUN-04 | Phase 13 | Pending |
-| RUN-05 | Phase 13 | Pending |
-| RUN-06 | Phase 13 | Pending |
+| CLI-01 | Phase 13 | Complete |
+| CLI-02 | Phase 13 | Complete |
+| CLI-03 | Phase 13 | Complete |
+| CLI-04 | Phase 13 | Complete |
+| CLI-05 | Phase 13 | Complete |
+| RUN-01 | Phase 13 | Complete |
+| RUN-02 | Phase 13 | Complete |
+| RUN-03 | Phase 13 | Complete |
+| RUN-04 | Phase 13 | Complete |
+| RUN-05 | Phase 13 | Complete |
+| RUN-06 | Phase 13 | Complete |
 
 **Coverage:**
+
 - v4 requirements: 11 total
 - Mapped to phases: 11 (all → Phase 13) ✓
 - Unmapped: 0 ✓
