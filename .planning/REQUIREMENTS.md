@@ -18,11 +18,11 @@ Requirements for the v4 milestone. Each maps to a roadmap phase.
 ### Ephemeral Runs
 
 - [ ] **RUN-01**: The run working directory is created under the system temp location (via `tempfile`, honoring `$TMPDIR`), not under `~/.local/share/book-translator/runs`
-- [ ] **RUN-02**: The run directory path is printed on every run (default output, not gated behind `--verbose`), so it can be located for debugging
-- [ ] **RUN-03**: On a successful run, the run directory is deleted after the output EPUB is written
-- [ ] **RUN-04**: On a failed run (parse or translation error), the run directory is also deleted
-- [ ] **RUN-05**: When `--preserve-temp` is set, the run directory is retained after the run (success or failure)
-- [ ] **RUN-06**: When `--preserve-temp` retains the directory, the output clearly states the path was preserved
+- [ ] **RUN-02**: The run directory path is printed only when the user is in a debugging posture — i.e. when at least one of `--verbose`, `--debug`, or `--preserve-temp` is set. A clean default run prints nothing about the temp path. *(Amended 2026-06-15 during Phase 13 discussion — originally "printed on every run"; flipped because the dir is deleted at the end of a clean run, so an always-printed path would point at nothing.)*
+- [ ] **RUN-03**: On a successful run, the run directory is deleted after the output EPUB is written — unless a preserve flag is active (`--preserve-temp`, or `--debug` which implies it)
+- [ ] **RUN-04**: On a failed run (parse or translation error), the run directory is also deleted — unless a preserve flag is active (`--preserve-temp`, or `--debug` which implies it)
+- [ ] **RUN-05**: When `--preserve-temp` is set, the run directory is retained after the run (success or failure). `--debug` implicitly enables `--preserve-temp`. *(Amended 2026-06-15 — added `--debug ⇒ --preserve-temp` coupling so debug runs keep the dir for inspection.)*
+- [ ] **RUN-06**: When the run directory is preserved (via `--preserve-temp` or `--debug`), the output clearly states the path was preserved; when preservation was auto-enabled by `--debug`, the output notes that `--debug` implies `--preserve-temp`
 
 ## Future Requirements
 
@@ -65,4 +65,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-06-15*
-*Last updated: 2026-06-15 after v4 roadmap creation*
+*Last updated: 2026-06-15 — RUN-02/03/04/05/06 amended during Phase 13 discussion (reporting gated behind debug-posture flags; `--debug ⇒ --preserve-temp`)*
