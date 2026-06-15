@@ -1,9 +1,14 @@
 import pytest
-
-from book_translator.store.job_store import JobStore
+from typer.testing import CliRunner
 
 
 @pytest.fixture
-def store(tmp_path):
-    """Return a JobStore backed by a temporary directory."""
-    return JobStore(base=tmp_path / "runs")
+def runner():
+    return CliRunner()
+
+
+@pytest.fixture
+def sample_txt(tmp_path):
+    f = tmp_path / "sample.en.txt"
+    f.write_text("Hello world.\n\nSecond paragraph.", encoding="utf-8")
+    return f

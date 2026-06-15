@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-import dataclasses
-
 from book_translator.models.document import BookDocument, Chapter, Paragraph
-from book_translator.models.job import JobMeta
 
 
 def test_paragraph_defaults():
@@ -62,10 +59,3 @@ def test_paragraph_kind_variants():
     for kind in ("heading", "caption", "footnote", "image", "table"):
         p = Paragraph(id="p1", text="x", raw_html="x", kind=kind)  # type: ignore[arg-type]
         assert p.kind == kind
-
-
-def test_jobmeta_default_params():
-    m = JobMeta(model="openai/gpt-4o")
-    assert m.params == {}
-    fields = {f.name for f in dataclasses.fields(m)}
-    assert fields == {"model", "params"}
