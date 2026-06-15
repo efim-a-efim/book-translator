@@ -157,6 +157,30 @@ def build_interactive_html(
             return f"<h2>{trans}{span}</h2>"
         return f"<h2>{escaped_text}</h2>"
 
+    # Per-sentence granularity (OM-03): emit one <details> per sentence, target
+    # in <summary>, source in the collapsible body — mirroring build_pair_html's
+    # source-text derivation and the whole-paragraph target-first ordering below.
+    if para.sentence_translations is not None:
+        if para.sentence_chunk_texts is not None:
+            source_texts = para.sentence_chunk_texts
+        else:
+            source_texts = _split_sentences_for_rendering(para.text)
+        safe_lang = _html.escape(target_lang)
+        pair_count = min(len(source_texts), len(para.sentence_translations))
+        blocks = []
+        for i in range(pair_count):
+            trans = _html.escape(para.sentence_translations[i])
+            src = _html.escape(source_texts[i])
+            open_attr = ' open="open"' if (is_first and i == 0) else ""
+            blocks.append(
+                f'<details class="bt-interactive"{open_attr}>'
+                f'<summary class="bt-original"'
+                f' xml:lang="{safe_lang}" lang="{safe_lang}">{trans}</summary>'
+                f'<div class="bt-translation">{src}</div>'
+                f"</details>"
+            )
+        return "".join(blocks)
+
     # paragraph / caption / footnote  (INTR-06, INTR-08)
     prefixed_orig = _prefix_ids(para.raw_html)       # INTR-18: BS4 before <details>
     trans = _html.escape(para.translation or "")
