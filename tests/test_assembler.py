@@ -599,3 +599,75 @@ class TestBuildInteractiveHtml:
         src_body = soup.find(class_="bt-translation")
         assert src_body is not None
         assert "Hello" in src_body.get_text()
+
+    # OM-03: per-sentence granularity -> one <details> per sentence
+    def test_sentence_granularity_one_details_per_sentence(self):
+        para = Paragraph(
+            id="p1",
+            text="Hello world. How are you?",
+            raw_html="<p>Hello world. How are you?</p>",
+            translation=None,
+            sentence_translations=["Привет мир.", "Как дела?"],
+            sentence_chunk_texts=["Hello world.", "How are you?"],
+            kind="paragraph",
+        )
+        result = build_interactive_html(para, "ru")
+        soup = BeautifulSoup(result, "lxml")
+        blocks = soup.find_all("details", class_="bt-interactive")
+        assert len(blocks) == 2, f"Expected one <details> per sentence, got {len(blocks)}"
+        # Target sentence in <summary>, source sentence in collapsible body.
+        first = blocks[0]
+        assert "Привет мир." in first.find("summary").get_text()
+        assert "Hello world." in first.find(class_="bt-translation").get_text()
+        second = blocks[1]
+        assert "Как дела?" in second.find("summary").get_text()
+        assert "How are you?" in second.find(class_="bt-translation").get_text()
+
+    # OM-03: per-page granularity (no sentence_translations) -> exactly one <details>
+    def test_per_page_granularity_single_details(self):
+        para = Paragraph(
+            id="p1",
+            text="Hello world. How are you?",
+            raw_html="<p>Hello world. How are you?</p>",
+            translation="Привет мир. Как дела?",
+            kind="paragraph",
+        )
+        result = build_interactive_html(para, "ru")
+        soup = BeautifulSoup(result, "lxml")
+        blocks = soup.find_all("details", class_="bt-interactive")
+        assert len(blocks) == 1
+
+    # INTR-07: is_first applies open="open" only to the FIRST emitted sentence block
+    def test_sentence_granularity_is_first_only_first_block(self):
+        para = Paragraph(
+            id="p1",
+            text="A. B.",
+            raw_html="<p>A. B.</p>",
+            translation=None,
+            sentence_translations=["TA.", "TB."],
+            sentence_chunk_texts=["A.", "B."],
+            kind="paragraph",
+        )
+        result = build_interactive_html(para, "ru", is_first=True)
+        assert result.count('open="open"') == 1
+        soup = BeautifulSoup(result, "lxml")
+        blocks = soup.find_all("details", class_="bt-interactive")
+        assert "open" in blocks[0].attrs
+        assert "open" not in blocks[1].attrs
+
+    # Length mismatch renders min() pairs (mirrors build_pair_html behavior)
+    def test_sentence_granularity_mismatch_renders_min(self):
+        para = Paragraph(
+            id="p1",
+            text="A. B. C.",
+            raw_html="<p>A. B. C.</p>",
+            translation=None,
+            sentence_translations=["TA.", "TB."],
+            sentence_chunk_texts=["A.", "B.", "C."],
+            kind="paragraph",
+        )
+        result = build_interactive_html(para, "ru")
+        soup = BeautifulSoup(result, "lxml")
+        blocks = soup.find_all("details", class_="bt-interactive")
+        assert len(blocks) == 2
+        assert "C." not in result
