@@ -4,22 +4,13 @@ import asyncio
 import logging
 import os
 import shutil
-from datetime import UTC, datetime
+import tempfile
 from pathlib import Path
 
 import typer
 
 from book_translator.assembler import assemble, assemble_interactive, assemble_monolingual
-from book_translator.models.job import JobMeta
 from book_translator.parsers import ParseError
-from book_translator.store.job_store import (
-    STATE_COMPLETED,
-    STATE_FAILED,
-    STATE_RUNNING,
-    STATE_UNKNOWN,
-    TERMINAL_STATES,
-    JobStore,
-)
 from book_translator.translator import TranslationError, translate
 from book_translator.translator.engine import translate_sentence
 
@@ -43,16 +34,6 @@ def _resolve_base_url(flag_value: str | None) -> str | None:
     if flag_value:
         return flag_value
     return os.environ.get("OPENAI_BASE_URL") or None
-
-
-def _set_state(store: JobStore, run_id: str, state: str) -> None:
-    try:
-        meta = store.read_meta(run_id)
-        meta.params["state"] = state
-        meta.params["finished_at"] = datetime.now(UTC).isoformat()
-        store.update_meta(run_id, meta)
-    except Exception as e:
-        logging.getLogger(__name__).warning("could not persist run state for %s: %s", run_id, e)
 
 
 def _copy_or_move(src: Path, dst: Path) -> None:
@@ -106,8 +87,8 @@ def _report_debug_failures(dst_dir: Path) -> None:
         typer.echo(f"[DEBUG] Could not count translation failures: {exc}", err=True)
 
 
-@app.command(name="translate")
-def translate_cmd(
+@app.command()
+def main(
     input_file: Path = typer.Argument(..., help="Input file (.epub, .txt, .md, .markdown)"),
     source_lang: str = typer.Option(..., "--source-lang", "-s", help="Source language code (e.g. en)"),
     target_lang: str = typer.Option(..., "--target-lang", "-t", help="Target language code (e.g. ru)"),
@@ -122,7 +103,8 @@ def translate_cmd(
     debug: bool = typer.Option(False, "--debug", help="Enable debug mode: DEBUG logging + detailed diagnostics (implies --verbose)"),  # noqa: E501
     granularity: str | None = typer.Option(None, "--granularity", help="Translation granularity: page (paragraph) or sentence"),
     mode: str | None = typer.Option(None, "--mode", help="Output format: parallel, interactive, or monolingual"),
-    batch_token_budget: int | None = typer.Option(None, "--batch-token-budget", help="Token budget per batch - only for sentence granularity"),
+    batch_token_budget: int | None = typer.Option(None, "--batch-token-budget", help="Token budget per batch - only for sentence granularity"),  # noqa: E501
+    preserve_temp: bool = typer.Option(False, "--preserve-temp", help="Keep the run directory after the run"),
 ) -> None:
     """Translate a book file into bilingual or monolingual output."""
     # Step 1 — Configure logging (D-06)
@@ -133,6 +115,8 @@ def translate_cmd(
         logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     else:
         logging.basicConfig(level=logging.WARNING)
+
+    preserve = preserve_temp or debug  # D-06
 
     # Step 2 — Suffix validation before run creation (D-04, D-16)
     suffix = input_file.suffix.lower()
@@ -167,7 +151,7 @@ def translate_cmd(
     # Step 2c — Granularity-scoped flag validation (MODE-04, MODE-05)
     if batch_token_budget is not None and effective_granularity != "sentence":
         typer.echo(
-            f"Error: --batch-token-budget is only valid for sentence granularity",
+            "Error: --batch-token-budget is only valid for sentence granularity",
             err=True,
         )
         raise typer.Exit(code=2)
@@ -188,50 +172,35 @@ def translate_cmd(
     default_output = Path.cwd() / f"{stem}.{target_lang}{_ext}"
     output_dest = output if output is not None else default_output
 
-    # Step 5 — Create run (D-02)
-    store = JobStore()
-    meta = JobMeta(
-        model=model,
-        params={
-            "state": STATE_RUNNING,
-            "source_lang": source_lang,
-            "target_lang": target_lang,
-            "base_url": resolved_base_url,
-            "context_window": context_window,
-            "concurrency": concurrency,
-            "max_retries": max_retries,
-            "input_filename": input_file.name,
-            "input_path": str(input_file.resolve()),
-            "started_at": datetime.now(UTC).isoformat(),
-            "granularity": effective_granularity,
-            "granularity_explicit": granularity is not None,
-            "mode": effective_mode,
-            "mode_explicit": mode is not None,
-        },
-    )
-    run_id = store.create_run(meta)
-    run_dir = store.run_dir(run_id)
-    if verbose:
-        typer.echo(f"Run: {run_id}  path: {run_dir}")
+    # Step 5 — Create ephemeral run dir under $TMPDIR (D-02, RUN-01)
+    job_dir = Path(tempfile.mkdtemp(prefix="book-translator-"))
+    (job_dir / "src").mkdir()
+    (job_dir / "dst").mkdir()
+    src_dir = job_dir / "src"
+    dst_dir = job_dir / "dst"
+    if verbose or debug or preserve:
+        typer.echo(f"Run directory: {job_dir}")  # D-05/D-07, RUN-02
     if debug:
         typer.echo(f"[DEBUG] model={model}")
         if resolved_base_url:
             typer.echo(f"[DEBUG] base_url={resolved_base_url}")
-        typer.echo(f"[DEBUG] job_dir={run_dir}")
+        typer.echo(f"[DEBUG] job_dir={job_dir}")
         typer.echo(f"[DEBUG] source={input_file.resolve()}")
         typer.echo(f"[DEBUG] destination={output_dest}")
 
     # Step 6 — Execute pipeline with error handling (D-13, D-14, D-15)
+    output_written = False
+    succeeded = False
     try:
         # Step 6a — Copy source file into job_dir/src/ (D-03)
-        src_copy = store.src_dir(run_id) / input_file.name
+        src_copy = src_dir / input_file.name
         shutil.copy2(input_file, src_copy)
         if verbose:
             typer.echo(f"Copied input to {src_copy}")
 
         # Step 6b — Parse and write BookDocument JSON to job_dir/src/ (D-03)
         doc = _parse_file(input_file)
-        json_path = store.src_dir(run_id) / f"{input_file.stem}.json"
+        json_path = src_dir / f"{input_file.stem}.json"
         json_path.write_text(doc.to_json(), encoding="utf-8")
         if verbose:
             para_count = sum(len(ch.paragraphs) for ch in doc.chapters)
@@ -252,7 +221,7 @@ def translate_cmd(
 
         if effective_granularity == "sentence":
             translate_kwargs = {
-                "job_dir": run_dir,
+                "job_dir": job_dir,
                 "model": model,
                 "api_key": resolved_api_key,
                 "base_url": resolved_base_url,
@@ -266,7 +235,7 @@ def translate_cmd(
             asyncio.run(translate_sentence(**translate_kwargs))
         else:
             translate_kwargs = {
-                "job_dir": run_dir,
+                "job_dir": job_dir,
                 "model": model,
                 "api_key": resolved_api_key,
                 "base_url": resolved_base_url,
@@ -281,93 +250,55 @@ def translate_cmd(
         if verbose:
             typer.echo("Translation complete.")
         if debug:
-            _report_debug_failures(store.dst_dir(run_id))
+            _report_debug_failures(dst_dir)
 
         # Step 6d — Assemble output
         if verbose:
             typer.echo("Assembling output ...")
         if effective_mode == "monolingual":
-            out_path = assemble_monolingual(job_dir=run_dir, target_lang=target_lang)
+            out_path = assemble_monolingual(job_dir=job_dir, target_lang=target_lang)
         elif effective_mode == "interactive":
-            out_path = assemble_interactive(job_dir=run_dir, target_lang=target_lang)
+            out_path = assemble_interactive(job_dir=job_dir, target_lang=target_lang)
         else:
-            out_path = assemble(job_dir=run_dir, target_lang=target_lang)
+            out_path = assemble(job_dir=job_dir, target_lang=target_lang)
         if verbose:
             typer.echo(f"Output assembled: {out_path}")
 
-        # Step 6e — Copy/move output to destination (D-17)
+        # Step 6e — Copy/move output to destination (D-17) — MUST complete before cleanup (Pitfall 3)
         output_dest.parent.mkdir(parents=True, exist_ok=True)
         _copy_or_move(out_path, output_dest)
-
-        # Step 6f — Auto-delete run on success (D-18)
-        _set_state(store, run_id, STATE_COMPLETED)
-        store.delete_run(run_id)
+        output_written = True
         typer.echo(f"Done. Output: {output_dest}")
-        if verbose:
-            typer.echo("Run directory cleaned up.")
+        succeeded = True
 
     except ParseError as exc:
-        _set_state(store, run_id, STATE_FAILED)
         typer.echo(f"Error: parse failed — {exc}", err=True)
-        typer.echo(f"Run retained: {run_id}  path: {run_dir}", err=True)
         raise typer.Exit(code=1)
     except TranslationError as exc:
-        _set_state(store, run_id, STATE_FAILED)
         hint = ""
         exc_str = str(exc)
         if "auth" in exc_str.lower() or "401" in exc_str or "403" in exc_str:
             hint = " Hint: check --api-key, BOOK_TRANSLATOR_API_KEY, or OPENAI_API_KEY."
         typer.echo(f"Error: translation failed — {exc}{hint}", err=True)
-        typer.echo(f"Run retained: {run_id}  path: {run_dir}", err=True)
         raise typer.Exit(code=1)
     except Exception as exc:
-        _set_state(store, run_id, STATE_FAILED)
         typer.echo(f"Error: {exc}", err=True)
-        typer.echo(f"Run retained: {run_id}  path: {run_dir}", err=True)
         if not resolved_api_key:
             typer.echo("Hint: no API key found. Set --api-key, BOOK_TRANSLATOR_API_KEY, or OPENAI_API_KEY.", err=True)
         raise typer.Exit(code=1)
-
-
-@app.command(name="list")
-def list_cmd() -> None:
-    """List preserved translation runs (failed and unknown state)."""
-    store = JobStore()
-    runs = store.list_run_metas()
-    if not runs:
-        typer.echo("No preserved runs found.")
-        return
-    typer.echo(f"{'RUN ID':<14}  {'DATE':<26}  {'STATE':<10}  PATH")
-    typer.echo("-" * 80)
-    for run_id, meta in runs:
-        state = meta.params.get("state", STATE_UNKNOWN)
-        started = meta.params.get("started_at", "unknown")
-        run_path = store.run_dir(run_id)
-        typer.echo(f"{run_id:<14}  {started:<26}  {state:<10}  {run_path}")
-
-
-@app.command(name="cleanup")
-def cleanup_cmd(
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show each deleted run ID"),
-) -> None:
-    """Remove preserved terminal runs (failed + completed). Skips running and unknown."""
-    store = JobStore()
-    runs = store.list_run_metas()
-    to_delete = [(run_id, meta) for run_id, meta in runs if meta.params.get("state", STATE_UNKNOWN) in TERMINAL_STATES]
-    if not to_delete:
-        typer.echo("Nothing to clean up.")
-        return
-    removed = []
-    errors = []
-    for run_id, meta in to_delete:
-        try:
-            store.delete_run(run_id)
-            removed.append(run_id)
-            if verbose:
-                typer.echo(f"Deleted: {run_id}")
-        except Exception as exc:
-            errors.append((run_id, exc))
-            typer.echo(f"Warning: could not delete {run_id}: {exc}", err=True)
-    typer.echo(f"Removed {len(removed)} run(s): {', '.join(removed)}")
-    if errors:
-        typer.echo(f"{len(errors)} run(s) could not be deleted (see warnings above).", err=True)
+    finally:
+        if preserve:
+            annotation = " (--debug implies --preserve-temp)" if (debug and not preserve_temp) else ""
+            typer.echo(f"Run directory preserved: {job_dir}{annotation}", err=not succeeded)  # D-10, RUN-06
+        else:
+            try:
+                shutil.rmtree(job_dir)
+            except OSError as exc:
+                if output_written:  # D-09: don't fail a successful run on cleanup error
+                    typer.echo(f"Warning: could not remove run directory {job_dir}: {exc}", err=True)
+                # else: failed run already exiting 1; cleanup error tolerated
+            if not succeeded:  # D-11 hint on deleted-after-failure
+                typer.echo(
+                    "Run directory deleted. Re-run with --preserve-temp (or --debug) to keep it for inspection.",
+                    err=True,
+                )
