@@ -4,8 +4,8 @@ milestone: v3
 milestone_name: Interactive Parallel EPUB
 current_phase: 12
 status: completed
-last_updated: "2026-06-12T22:29:32.686Z"
-last_activity: 2026-06-12
+last_updated: "2026-06-15T14:08:32.841Z"
+last_activity: 2026-06-15 — Milestone v3 completed and archived
 progress:
   total_phases: 2
   completed_phases: 2
@@ -18,22 +18,22 @@ progress:
 
 **Current Milestone:** v3 Interactive Parallel EPUB
 **Current Phase:** 12
-**Status:** Milestone complete
-**Last Updated:** 2026-06-12
+**Status:** v3 milestone complete — awaiting next milestone
+**Last Updated:** 2026-06-15
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-06-12)
+See: `.planning/PROJECT.md` (updated 2026-06-15)
 
 **Core value:** A reader opens the output EPUB in any EPUB app and can follow the story paragraph-by-paragraph, seeing original and translated text together — without any special reader software.
-**Current focus:** Phase 12 — CSS + CLI Integration
+**Current focus:** Planning next milestone (`/gsd-new-milestone`)
 
 ## Current Position
 
-Phase: 12 (CSS + CLI Integration) — COMPLETE
-Plan: Not started
-Status: Phase complete
-Last activity: 2026-06-15 - Completed quick task 260615-eff: Fix github account name (aefimov→efim-a-efim)
+Phase: Milestone v3 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-06-15 — Milestone v3 completed and archived
 
 ## Phase Progress
 
@@ -55,6 +55,12 @@ Overall: 2/2 phases complete [████████████████�
 - Closed 2026-06-12, status tech_debt accepted
 - 6 phases complete (7–10.2), 24/24 requirements satisfied
 - Archived to `.planning/milestones/v2/`
+
+## v3 Milestone (closed)
+
+- Closed 2026-06-15, status tech_debt accepted
+- 2 phases complete (11–12), 19/19 requirements satisfied
+- Archived to `.planning/milestones/v3-ROADMAP.md` + `v3-REQUIREMENTS.md`
 
 ## Accumulated Context
 
@@ -99,3 +105,7 @@ Overall: 2/2 phases complete [████████████████�
 - [Phase 12-02]: VALID_MODES = {per-page, per-sentence, monolingual, interactive} (D-01)
 - [Phase 12-02]: --output-format, VALID_OUTPUT_FORMATS, FORMAT_TO_EXT removed from cli.py (D-02)
 - [Phase 12-02]: assemble_monolingual() simplified to epub-only; txt/md dead code removed (D-04)
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone

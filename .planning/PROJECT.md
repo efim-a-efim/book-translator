@@ -8,20 +8,15 @@ An open-source AI-powered fiction book translator that converts books (EPUB, FB2
 
 A reader opens the output EPUB in any EPUB app and can follow the story paragraph-by-paragraph, seeing original and translated text together — without any special reader software.
 
-## Current Milestone: v3 Interactive Parallel EPUB
+## Current State
 
-**Goal:** Add `--mode interactive` that produces an EPUB where original text is always visible and translations are revealed per-unit on tap using CSS-only HTML5 `<details>`/`<summary>` — no JavaScript.
+**Shipped v3 Interactive Parallel EPUB** (2026-06-15) — `--mode interactive` produces a CSS-only HTML5 `<details>`/`<summary>` EPUB: original always visible, translation revealed per-unit on tap, no JavaScript, graceful fallback. 19/19 INTR requirements satisfied across Phases 11–12.
 
-**Target features:**
-- `--mode interactive` CLI flag with cross-flag validation
-- Paragraphs rendered as `<details>` — original in `<summary>`, translation revealed on tap
-- Headings rendered with always-visible inline translation span (no `<details>`)
-- Captions, footnotes → `<details>` (same as paragraphs)
-- Images, tables → pass-through
-- CSS bundled in `style.css`; zero `<script>` tags in output
-- Graceful fallback: readers without `<details>` show both texts permanently
+Post-v3 quick tasks reshaped the CLI surface: `--mode`→`--granularity` (page/sentence), `--output-mode`→`--mode` (per-page/per-sentence/monolingual/interactive), `--output-format` removed.
 
-**Previous state:** v2 shipped 2026-06-12. Three translation modes: per-page (default), per-sentence, monolingual. 1967 LOC Python. 187 tests pass.
+**Codebase:** 2204 LOC Python (src) · 230 test functions · 4 modes (per-page, per-sentence, monolingual, interactive).
+
+**Next milestone:** not yet defined — run `/gsd-new-milestone`.
 
 ## Requirements
 
@@ -78,6 +73,7 @@ A reader opens the output EPUB in any EPUB app and can follow the story paragrap
 - EPUB is chosen as output because it's universally supported by e-readers (Kindle, Kobo, Apple Books, etc.)
 - v1 scope: Python core library + CLI tool; web interface is a separate future milestone
 - v2 shipped: 1967 LOC Python · 187 tests · 3 translation modes · EPUB/TXT/MD output
+- v3 shipped: 2204 LOC Python · 230 test functions · 4 modes incl. interactive · EPUB-only output
 
 ## Constraints
 
@@ -100,6 +96,11 @@ A reader opens the output EPUB in any EPUB app and can follow the story paragrap
 | per-page remains default mode | Backward-compatible with v1 behavior | ✓ Implemented v2 |
 | `sentence_chunk_texts` carried through data model | Prevents regex re-splitting at render time; fixes SENT-06 root cause | ✓ Implemented v2 (Phase 10.1) |
 | `FORMAT_TO_EXT` dict for extension derivation | Clean mapping from output format to file extension; fixes MONO-02 hardcoded `.epub` | ✓ Implemented v2 (Phase 10.2) |
+| CSS-only `<details>`/`<summary>` for interactive mode (no JS) | Universal EPUB-reader compatibility and security; graceful fallback shows both texts | ✓ Implemented v3 (Phase 11–12) |
+| HTML5 DOCTYPE + `build_interactive_html` assembled after BS4/lxml | `<details>` valid only under HTML5; post-processing avoids `_inject_class`/`_prefix_ids` seeing `<details>` (INTR-18) | ✓ Implemented v3 (Phase 11) |
+| `_make_css_item` adds + links stylesheet in all builders | Fixes pre-existing bug where ebooklib silently discarded template `<link>` (INTR-01) | ✓ Implemented v3 (Phase 11) |
+| `\25B6`/`\25BC` escapes, CSS as UTF-8 bytes | Prevents ebooklib encoding corruption of disclosure-triangle glyphs (INTR-15/16) | ✓ Implemented v3 (Phase 12) |
+| `--output-format` removed entirely; all modes produce EPUB (D-02) | Simplifies CLI; txt/md output was dead surface area | ✓ Implemented v3 (Phase 12) |
 
 ## Evolution
 
@@ -119,4 +120,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-12 after Phase 12 (CSS + CLI Integration) complete — v3 milestone complete*
+*Last updated: 2026-06-15 after v3 Interactive Parallel EPUB milestone shipped*
