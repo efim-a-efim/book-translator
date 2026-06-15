@@ -49,7 +49,7 @@ See: `.planning/milestones/v3-ROADMAP.md`
 
 ### v4 CLI Tool Polishing
 
-- [ ] **Phase 13: Single-Command Ephemeral CLI** — Collapse to a root command (drop `translate`/`list`/`cleanup`), run under system temp, always print + always delete the run dir unless `--preserve-temp`
+- [ ] **Phase 13: Single-Command Ephemeral CLI** (2 plans) — Collapse to a root command (drop `translate`/`list`/`cleanup`), run under system temp, print the run dir only under a debug posture, and delete it after every run unless `--preserve-temp`
 
 ## Phase Details
 
@@ -63,7 +63,9 @@ See: `.planning/milestones/v3-ROADMAP.md`
   3. Every run creates its working directory under the system temp location (via `tempfile`, honoring `$TMPDIR`) — nothing is written under `~/.local/share/book-translator/runs` — and the run directory path is printed on every run by default (not gated behind `--verbose`).
   4. After a successful run the run directory no longer exists on disk, and after a failed run (parse or translation error) the run directory is also removed.
   5. With `--preserve-temp`, the run directory still exists after the run (whether it succeeded or failed) and the output clearly states the path was preserved.
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 13-01-PLAN.md — Rewrite cli.py to a single ephemeral root command; delete the persistence machinery (store/job_store.py, models/job.py)
+- [ ] 13-02-PLAN.md — Rewrite the test suite: drop the `translate` token, delete store/list/cleanup tests, add ephemeral behavioral tests
 
 ## Progress
 
