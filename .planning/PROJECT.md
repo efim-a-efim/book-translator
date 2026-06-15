@@ -16,7 +16,7 @@ Post-v3 quick tasks reshaped the CLI surface: `--mode`→`--granularity` (page/s
 
 **Codebase:** 2204 LOC Python (src) · 230 test functions · 4 modes (per-page, per-sentence, monolingual, interactive).
 
-**Next milestone:** v4 CLI Tool Polishing — single-command, fully ephemeral CLI.
+**v4 CLI Tool Polishing — in progress.** Phase 13 complete (2026-06-15): `book-translator` is now a single root command (no `translate`/`list`/`cleanup` subcommands) that runs each translation in an ephemeral system-temp directory (`tempfile`, honors `$TMPDIR`), deletes it on success and failure unless `--preserve-temp`, and the persistence layer (`store/`, `models/job.py`) has been removed. CLI-01..05 and RUN-01..06 validated.
 
 ## Current Milestone: v4 CLI Tool Polishing
 
@@ -133,4 +133,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-15 after v4 CLI Tool Polishing milestone started*
+*Last updated: 2026-06-15 after Phase 13 (Single-Command Ephemeral CLI) completed*
