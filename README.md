@@ -2,7 +2,7 @@
 
 **AI-powered bilingual book translator.** Converts EPUB, TXT, and Markdown books into parallel-reading EPUBs — original and translated paragraphs side-by-side.
 
-[![CI](https://github.com/aefimov/book-translator/actions/workflows/ci.yml/badge.svg)](https://github.com/aefimov/book-translator/actions/workflows/ci.yml)
+[![CI](https://github.com/efim-a-efim/book-translator/actions/workflows/ci.yml/badge.svg)](https://github.com/efim-a-efim/book-translator/actions/workflows/ci.yml)
 
 ---
 
@@ -22,7 +22,7 @@
 **From git (recommended until PyPI release):**
 
 ```bash
-pip install git+https://github.com/aefimov/book-translator.git
+pip install git+https://github.com/efim-a-efim/book-translator.git
 ```
 
 **From PyPI (coming soon):**
@@ -34,7 +34,7 @@ pip install book-translator
 **For development:**
 
 ```bash
-git clone https://github.com/aefimov/book-translator.git
+git clone https://github.com/efim-a-efim/book-translator.git
 cd book-translator
 uv sync --all-extras          # or: pip install -e ".[dev]"
 ```
