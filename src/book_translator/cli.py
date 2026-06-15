@@ -25,9 +25,9 @@ from book_translator.translator.engine import translate_sentence
 
 SUPPORTED_SUFFIXES = {".epub", ".txt", ".md", ".markdown"}
 
-VALID_MODES = {"per-page", "per-sentence"}
+VALID_GRANULARITIES = {"page", "sentence"}
 
-VALID_OUTPUT_MODES = {"parallel", "interactive", "monolingual"}
+VALID_MODES = {"parallel", "interactive", "monolingual"}
 
 app = typer.Typer(add_completion=False, help="AI-powered bilingual book translator.")
 
@@ -120,9 +120,9 @@ def translate_cmd(
     max_retries: int = typer.Option(5, "--max-retries", help="Max retries per paragraph"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show step-level logs"),
     debug: bool = typer.Option(False, "--debug", help="Enable debug mode: DEBUG logging + detailed diagnostics (implies --verbose)"),  # noqa: E501
-    mode: str | None = typer.Option(None, "--mode", help="Translation granularity: per-page (paragraph) or per-sentence (sentence)"),
-    output_mode: str | None = typer.Option(None, "--output-mode", help="Output format: parallel, interactive, or monolingual"),
-    batch_token_budget: int | None = typer.Option(None, "--batch-token-budget", help="Token budget per batch - only for per-sentence mode"),
+    granularity: str | None = typer.Option(None, "--granularity", help="Translation granularity: page (paragraph) or sentence"),
+    mode: str | None = typer.Option(None, "--mode", help="Output format: parallel, interactive, or monolingual"),
+    batch_token_budget: int | None = typer.Option(None, "--batch-token-budget", help="Token budget per batch - only for sentence granularity"),
 ) -> None:
     """Translate a book file into bilingual or monolingual output."""
     # Step 1 — Configure logging (D-06)
@@ -146,8 +146,17 @@ def translate_cmd(
         typer.echo(f"Error: input file not found: {input_file}", err=True)
         raise typer.Exit(code=2)
 
-    # Step 2b — Mode validation before run creation (MODE-01, MODE-03)
-    effective_mode = mode if mode is not None else "per-page"
+    # Step 2b — Granularity validation before run creation (MODE-01, MODE-03)
+    effective_granularity = granularity if granularity is not None else "page"
+    if granularity is not None and granularity not in VALID_GRANULARITIES:
+        typer.echo(
+            f"Error: invalid granularity '{granularity}'. Valid granularities: {', '.join(sorted(VALID_GRANULARITIES))}",
+            err=True,
+        )
+        raise typer.Exit(code=2)
+
+    # Step 2b' — Mode (output) validation before run creation (OM-01, OM-04)
+    effective_mode = mode if mode is not None else "parallel"
     if mode is not None and mode not in VALID_MODES:
         typer.echo(
             f"Error: invalid mode '{mode}'. Valid modes: {', '.join(sorted(VALID_MODES))}",
@@ -155,19 +164,10 @@ def translate_cmd(
         )
         raise typer.Exit(code=2)
 
-    # Step 2b' — Output-mode validation before run creation (OM-01, OM-04)
-    effective_output_mode = output_mode if output_mode is not None else "parallel"
-    if output_mode is not None and output_mode not in VALID_OUTPUT_MODES:
+    # Step 2c — Granularity-scoped flag validation (MODE-04, MODE-05)
+    if batch_token_budget is not None and effective_granularity != "sentence":
         typer.echo(
-            f"Error: invalid output mode '{output_mode}'. Valid output modes: {', '.join(sorted(VALID_OUTPUT_MODES))}",
-            err=True,
-        )
-        raise typer.Exit(code=2)
-
-    # Step 2c — Mode-scoped flag validation (MODE-04, MODE-05)
-    if batch_token_budget is not None and effective_mode != "per-sentence":
-        typer.echo(
-            f"Error: --batch-token-budget is only valid for per-sentence mode",
+            f"Error: --batch-token-budget is only valid for sentence granularity",
             err=True,
         )
         raise typer.Exit(code=2)
@@ -203,10 +203,10 @@ def translate_cmd(
             "input_filename": input_file.name,
             "input_path": str(input_file.resolve()),
             "started_at": datetime.now(UTC).isoformat(),
+            "granularity": effective_granularity,
+            "granularity_explicit": granularity is not None,
             "mode": effective_mode,
             "mode_explicit": mode is not None,
-            "output_mode": effective_output_mode,
-            "output_mode_explicit": output_mode is not None,
         },
     )
     run_id = store.create_run(meta)
@@ -243,14 +243,14 @@ def translate_cmd(
             typer.echo(f"Translating {source_lang} → {target_lang} using {model} ...")
 
             def _progress_callback(done: int, total: int) -> None:
-                if effective_mode == "per-sentence":
+                if effective_granularity == "sentence":
                     typer.echo(f"Progress: {done}/{total} chunks translated")
                 else:
                     typer.echo(f"Progress: {done}/{total} paragraphs translated")
 
             progress_callback = _progress_callback
 
-        if effective_mode == "per-sentence":
+        if effective_granularity == "sentence":
             translate_kwargs = {
                 "job_dir": run_dir,
                 "model": model,
@@ -286,9 +286,9 @@ def translate_cmd(
         # Step 6d — Assemble output
         if verbose:
             typer.echo("Assembling output ...")
-        if effective_output_mode == "monolingual":
+        if effective_mode == "monolingual":
             out_path = assemble_monolingual(job_dir=run_dir, target_lang=target_lang)
-        elif effective_output_mode == "interactive":
+        elif effective_mode == "interactive":
             out_path = assemble_interactive(job_dir=run_dir, target_lang=target_lang)
         else:
             out_path = assemble(job_dir=run_dir, target_lang=target_lang)

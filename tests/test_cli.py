@@ -773,46 +773,46 @@ def test_debug_base_url_shown_when_set(runner, tmp_store, sample_txt):
 # --- Phase 7: Mode selection tests ---
 
 
-def test_invalid_mode_exits_code_2(runner, tmp_store, sample_txt):
-    """Invalid --mode value exits with code 2 and lists valid granularity modes."""
+def test_invalid_granularity_exits_code_2(runner, tmp_store, sample_txt):
+    """Invalid --granularity value exits with code 2 and lists valid granularities."""
     result = runner.invoke(
         app,
-        ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--mode", "nope"],
+        ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--granularity", "nope"],
     )
     assert result.exit_code == 2
-    assert "per-page" in result.output
-    assert "per-sentence" in result.output
-    # monolingual / interactive moved to --output-mode; no longer valid --mode values
+    assert "page" in result.output
+    assert "sentence" in result.output
+    # monolingual / interactive live under --mode; no longer valid --granularity values
     assert "monolingual" not in result.output
 
 
-def test_invalid_mode_no_run_created(runner, tmp_store, sample_txt):
-    """Invalid --mode does not create a run directory."""
+def test_invalid_granularity_no_run_created(runner, tmp_store, sample_txt):
+    """Invalid --granularity does not create a run directory."""
     runner.invoke(
         app,
-        ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--mode", "invalid"],
+        ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--granularity", "invalid"],
     )
     assert list(tmp_store.iterdir()) == []
 
 
-def test_per_sentence_mode_recognized(runner, tmp_store, sample_txt):
-    """--mode per-sentence is recognized as valid mode."""
-    # Verify the mode option accepts per-sentence
+def test_sentence_granularity_recognized(runner, tmp_store, sample_txt):
+    """--granularity sentence is recognized as valid granularity."""
+    # Verify the granularity option accepts sentence
     result = runner.invoke(
         app,
-        ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--mode", "per-sentence", "--api-key", "test-key"],
+        ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--granularity", "sentence", "--api-key", "test-key"],
     )
-    # Should not fail on invalid mode - will fail on translation but that's expected
-    assert "invalid mode" not in result.output.lower()
+    # Should not fail on invalid granularity - will fail on translation but that's expected
+    assert "invalid granularity" not in result.output.lower()
 
 
 def test_monolingual_mode_works(runner, tmp_store, sample_txt):
-    """--output-mode monolingual is recognized (output format moved off --mode)."""
+    """--mode monolingual is recognized (output format selection)."""
     # This test verifies monolingual output mode is recognized and dispatches correctly
     # The actual assembly is tested in test_assembler.py
     result = runner.invoke(
         app,
-        ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--output-mode", "monolingual", "--api-key", "test-key", "--help"],
+        ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--mode", "monolingual", "--api-key", "test-key", "--help"],
     )
     assert result.exit_code == 0
 
@@ -827,32 +827,32 @@ def test_output_format_option_does_not_exist(runner, tmp_store, sample_txt):
     assert "no such option" in result.output.lower() or result.exit_code == 2
 
 
-def test_batch_token_budget_rejected_without_per_sentence(runner, tmp_store, sample_txt):
-    """--batch-token-budget rejected when mode is omitted (defaults to per-page)."""
+def test_batch_token_budget_rejected_without_sentence(runner, tmp_store, sample_txt):
+    """--batch-token-budget rejected when granularity is omitted (defaults to page)."""
     result = runner.invoke(
         app,
         ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--batch-token-budget", "4000"],
     )
     assert result.exit_code == 2
     assert "--batch-token-budget" in result.output
-    assert "per-sentence mode" in result.output
+    assert "sentence granularity" in result.output
     assert list(tmp_store.iterdir()) == []
 
 
-def test_batch_token_budget_rejected_with_per_page(runner, tmp_store, sample_txt):
-    """--batch-token-budget rejected when --mode per-page."""
+def test_batch_token_budget_rejected_with_page(runner, tmp_store, sample_txt):
+    """--batch-token-budget rejected when --granularity page."""
     result = runner.invoke(
         app,
-        ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--mode", "per-page", "--batch-token-budget", "4000"],
+        ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--granularity", "page", "--batch-token-budget", "4000"],
     )
     assert result.exit_code == 2
     assert "--batch-token-budget" in result.output
-    assert "per-sentence mode" in result.output
+    assert "sentence granularity" in result.output
     assert list(tmp_store.iterdir()) == []
 
 
 def test_interactive_mode_is_valid(runner, tmp_store, sample_txt):
-    """--output-mode interactive dispatches to assemble_interactive() without error."""
+    """--mode interactive dispatches to assemble_interactive() without error."""
     mock_doc = MagicMock()
     mock_doc.to_json.return_value = '{"title":"T","author":"A","source_lang":"en","chapters":[]}'
     mock_doc.chapters = []
@@ -872,7 +872,7 @@ def test_interactive_mode_is_valid(runner, tmp_store, sample_txt):
     ):
         result = runner.invoke(
             app,
-            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--output-mode", "interactive", "--api-key", "test-key"],
+            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--mode", "interactive", "--api-key", "test-key"],
         )
 
     assert result.exit_code == 0, result.output
@@ -882,22 +882,22 @@ def test_interactive_mode_is_valid(runner, tmp_store, sample_txt):
     mock_asm.assert_not_called()
 
 
-def test_per_sentence_with_batch_token_budget(runner, tmp_store, sample_txt):
-    """--mode per-sentence --batch-token-budget is accepted."""
+def test_sentence_granularity_with_batch_token_budget(runner, tmp_store, sample_txt):
+    """--granularity sentence --batch-token-budget is accepted."""
     # Verify the flag combination is accepted (will fail on translation but that's expected)
     result = runner.invoke(
         app,
-        ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--mode", "per-sentence", "--batch-token-budget", "2000", "--api-key", "test-key"],
+        ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--granularity", "sentence", "--batch-token-budget", "2000", "--api-key", "test-key"],
     )
     # Should not fail on invalid flag combination
     assert "--batch-token-budget" not in result.output or "only valid for" not in result.output
 
 
-# --- Phase 7: Per-page dispatch equivalence tests ---
+# --- Phase 7: Page granularity dispatch equivalence tests ---
 
 
-def test_omitted_mode_and_per_page_dispatch_equivalence(runner, tmp_store, sample_txt):
-    """Omitted mode and explicit --mode per-page use equivalent dispatch."""
+def test_omitted_and_page_granularity_dispatch_equivalence(runner, tmp_store, sample_txt):
+    """Omitted granularity and explicit --granularity page use equivalent dispatch."""
     omitted_calls = {}
     explicit_calls = {}
 
@@ -911,7 +911,7 @@ def test_omitted_mode_and_per_page_dispatch_equivalence(runner, tmp_store, sampl
     mock_doc.to_json.return_value = '{"title":"T","author":"A","source_lang":"en","chapters":[]}'
     mock_doc.chapters = []
 
-    # Test omitted mode
+    # Test omitted granularity
     with (
         patch("book_translator.cli._parse_file", return_value=mock_doc) as mock_parse_omitted,
         patch("book_translator.cli.translate", side_effect=_fake_translate_omitted),
@@ -930,7 +930,7 @@ def test_omitted_mode_and_per_page_dispatch_equivalence(runner, tmp_store, sampl
         )
     assert result.exit_code == 0, result.output
 
-    # Test explicit per-page mode
+    # Test explicit page granularity
     with (
         patch("book_translator.cli._parse_file", return_value=mock_doc) as mock_parse_explicit,
         patch("book_translator.cli.translate", side_effect=_fake_translate_explicit),
@@ -945,7 +945,7 @@ def test_omitted_mode_and_per_page_dispatch_equivalence(runner, tmp_store, sampl
         mock_assemble_explicit.side_effect = _fake_assemble_explicit
         result = runner.invoke(
             app,
-            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--api-key", "test-key", "--mode", "per-page"],
+            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--api-key", "test-key", "--granularity", "page"],
         )
     assert result.exit_code == 0, result.output
 
@@ -958,15 +958,16 @@ def test_omitted_mode_and_per_page_dispatch_equivalence(runner, tmp_store, sampl
     for key in omitted_calls["translate_kwargs"]:
         assert omitted_calls["translate_kwargs"][key] == explicit_calls["translate_kwargs"][key]
 
-    # No mode-related kwargs passed to translate
+    # No granularity-related kwargs passed to translate
     for kwargs in [omitted_calls["translate_kwargs"], explicit_calls["translate_kwargs"]]:
         assert "mode" not in kwargs
+        assert "granularity" not in kwargs
         assert "output_format" not in kwargs
         assert "batch_token_budget" not in kwargs
 
 
-def test_per_page_mode_metadata(runner, tmp_store, sample_txt):
-    """Per-page runs record mode and mode_explicit in meta.json."""
+def test_page_granularity_metadata(runner, tmp_store, sample_txt):
+    """Page runs record granularity and granularity_explicit in meta.json."""
     from book_translator.parsers import ParseError
 
     with patch("book_translator.cli._parse_file", side_effect=ParseError("boom")):
@@ -977,24 +978,24 @@ def test_per_page_mode_metadata(runner, tmp_store, sample_txt):
     runs = list(tmp_store.iterdir())
     assert len(runs) == 1
     meta = json.loads((runs[0] / "meta.json").read_text())
-    assert meta["params"]["mode"] == "per-page"
-    assert meta["params"]["mode_explicit"] is False
+    assert meta["params"]["granularity"] == "page"
+    assert meta["params"]["granularity_explicit"] is False
 
 
-def test_explicit_per_page_mode_metadata(runner, tmp_store, sample_txt):
-    """Explicit --mode per-page records mode_explicit=true in meta.json."""
+def test_explicit_page_granularity_metadata(runner, tmp_store, sample_txt):
+    """Explicit --granularity page records granularity_explicit=true in meta.json."""
     from book_translator.parsers import ParseError
 
     with patch("book_translator.cli._parse_file", side_effect=ParseError("boom")):
         runner.invoke(
             app,
-            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--api-key", "test-key", "--mode", "per-page"],
+            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--api-key", "test-key", "--granularity", "page"],
         )
     runs = list(tmp_store.iterdir())
     assert len(runs) == 1
     meta = json.loads((runs[0] / "meta.json").read_text())
-    assert meta["params"]["mode"] == "per-page"
-    assert meta["params"]["mode_explicit"] is True
+    assert meta["params"]["granularity"] == "page"
+    assert meta["params"]["granularity_explicit"] is True
 
 
 def test_mode_metadata_no_secret_leakage(runner, tmp_store, sample_txt):
@@ -1004,7 +1005,7 @@ def test_mode_metadata_no_secret_leakage(runner, tmp_store, sample_txt):
     with patch("book_translator.cli._parse_file", side_effect=ParseError("boom")):
         runner.invoke(
             app,
-            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--api-key", "super-secret-key", "--mode", "per-page"],
+            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--api-key", "super-secret-key", "--granularity", "page"],
         )
     runs = list(tmp_store.iterdir())
     assert len(runs) == 1
@@ -1018,7 +1019,7 @@ def test_mode_metadata_no_secret_leakage(runner, tmp_store, sample_txt):
 
 
 def test_monolingual_output_gets_epub_extension(runner, tmp_store, sample_txt):
-    """--output-mode monolingual produces default output path ending in .epub (MONO-02, D-04)."""
+    """--mode monolingual produces default output path ending in .epub (MONO-02, D-04)."""
     mock_doc = MagicMock()
     mock_doc.to_json.return_value = '{"title":"T","author":"A","source_lang":"en","chapters":[]}'
     mock_doc.chapters = []
@@ -1036,7 +1037,7 @@ def test_monolingual_output_gets_epub_extension(runner, tmp_store, sample_txt):
     ):
         result = runner.invoke(
             app,
-            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--output-mode", "monolingual", "--api-key", "test-key"],
+            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--mode", "monolingual", "--api-key", "test-key"],
         )
 
     assert result.exit_code == 0, result.output
@@ -1045,7 +1046,7 @@ def test_monolingual_output_gets_epub_extension(runner, tmp_store, sample_txt):
     assert output_line.endswith(".epub"), f"Expected .epub extension, got: {output_line}"
 
 
-# --- OM: --output-mode flag (output format) split from --mode (granularity) ---
+# --- OM: --mode (output format) / --granularity (translation unit) ---
 
 
 def _make_mock_doc():
@@ -1055,8 +1056,8 @@ def _make_mock_doc():
     return mock_doc
 
 
-def test_output_mode_interactive_dispatches_assemble_interactive(runner, tmp_store, sample_txt):
-    """--output-mode interactive dispatches assemble_interactive()."""
+def test_mode_interactive_dispatches_assemble_interactive(runner, tmp_store, sample_txt):
+    """--mode interactive dispatches assemble_interactive()."""
     mock_doc = _make_mock_doc()
 
     def _fake(job_dir, target_lang):
@@ -1074,7 +1075,7 @@ def test_output_mode_interactive_dispatches_assemble_interactive(runner, tmp_sto
     ):
         result = runner.invoke(
             app,
-            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--output-mode", "interactive", "--api-key", "test-key"],
+            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--mode", "interactive", "--api-key", "test-key"],
         )
     assert result.exit_code == 0, result.output
     mock_int.assert_called_once()
@@ -1082,8 +1083,8 @@ def test_output_mode_interactive_dispatches_assemble_interactive(runner, tmp_sto
     mock_par.assert_not_called()
 
 
-def test_output_mode_monolingual_dispatches_assemble_monolingual(runner, tmp_store, sample_txt):
-    """--output-mode monolingual dispatches assemble_monolingual()."""
+def test_mode_monolingual_dispatches_assemble_monolingual(runner, tmp_store, sample_txt):
+    """--mode monolingual dispatches assemble_monolingual()."""
     mock_doc = _make_mock_doc()
 
     def _fake(job_dir, target_lang):
@@ -1101,7 +1102,7 @@ def test_output_mode_monolingual_dispatches_assemble_monolingual(runner, tmp_sto
     ):
         result = runner.invoke(
             app,
-            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--output-mode", "monolingual", "--api-key", "test-key"],
+            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--mode", "monolingual", "--api-key", "test-key"],
         )
     assert result.exit_code == 0, result.output
     mock_mono.assert_called_once()
@@ -1109,8 +1110,8 @@ def test_output_mode_monolingual_dispatches_assemble_monolingual(runner, tmp_sto
     mock_par.assert_not_called()
 
 
-def test_output_mode_omitted_defaults_to_parallel(runner, tmp_store, sample_txt):
-    """Omitted --output-mode dispatches the parallel assembler (assemble)."""
+def test_mode_omitted_defaults_to_parallel(runner, tmp_store, sample_txt):
+    """Omitted --mode dispatches the parallel assembler (assemble)."""
     mock_doc = _make_mock_doc()
 
     def _fake(job_dir, target_lang):
@@ -1136,11 +1137,11 @@ def test_output_mode_omitted_defaults_to_parallel(runner, tmp_store, sample_txt)
     mock_mono.assert_not_called()
 
 
-def test_invalid_output_mode_exits_code_2(runner, tmp_store, sample_txt):
-    """Invalid --output-mode value exits code 2 and lists valid output modes."""
+def test_invalid_mode_exits_code_2(runner, tmp_store, sample_txt):
+    """Invalid --mode value exits code 2 and lists valid modes."""
     result = runner.invoke(
         app,
-        ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--output-mode", "bogus"],
+        ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--mode", "bogus"],
     )
     assert result.exit_code == 2
     assert "parallel" in result.output
@@ -1148,17 +1149,17 @@ def test_invalid_output_mode_exits_code_2(runner, tmp_store, sample_txt):
     assert "monolingual" in result.output
 
 
-def test_invalid_output_mode_no_run_created(runner, tmp_store, sample_txt):
-    """Invalid --output-mode does not create a run directory."""
+def test_invalid_mode_no_run_created(runner, tmp_store, sample_txt):
+    """Invalid --mode does not create a run directory."""
     runner.invoke(
         app,
-        ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--output-mode", "bogus"],
+        ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--mode", "bogus"],
     )
     assert list(tmp_store.iterdir()) == []
 
 
-def test_output_mode_interactive_with_per_sentence_accepted(runner, tmp_store, sample_txt):
-    """--output-mode interactive --mode per-sentence is accepted (no invalid error)."""
+def test_mode_interactive_with_sentence_granularity_accepted(runner, tmp_store, sample_txt):
+    """--mode interactive --granularity sentence is accepted (no invalid error)."""
     mock_doc = _make_mock_doc()
 
     def _fake(job_dir, target_lang):
@@ -1174,30 +1175,30 @@ def test_output_mode_interactive_with_per_sentence_accepted(runner, tmp_store, s
     ):
         result = runner.invoke(
             app,
-            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--output-mode", "interactive", "--mode", "per-sentence", "--api-key", "test-key"],
+            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--mode", "interactive", "--granularity", "sentence", "--api-key", "test-key"],
         )
     assert result.exit_code == 0, result.output
     assert "invalid" not in result.output.lower()
 
 
-def test_output_mode_metadata(runner, tmp_store, sample_txt):
-    """Runs record output_mode and output_mode_explicit in meta.json."""
+def test_mode_metadata(runner, tmp_store, sample_txt):
+    """Runs record mode and mode_explicit in meta.json."""
     from book_translator.parsers import ParseError
 
     with patch("book_translator.cli._parse_file", side_effect=ParseError("boom")):
         runner.invoke(
             app,
-            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--api-key", "test-key", "--output-mode", "interactive"],
+            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--api-key", "test-key", "--mode", "interactive"],
         )
     runs = list(tmp_store.iterdir())
     assert len(runs) == 1
     meta = json.loads((runs[0] / "meta.json").read_text())
-    assert meta["params"]["output_mode"] == "interactive"
-    assert meta["params"]["output_mode_explicit"] is True
+    assert meta["params"]["mode"] == "interactive"
+    assert meta["params"]["mode_explicit"] is True
 
 
-def test_output_mode_metadata_default(runner, tmp_store, sample_txt):
-    """Omitted --output-mode records parallel + explicit=false in meta.json."""
+def test_mode_metadata_default(runner, tmp_store, sample_txt):
+    """Omitted --mode records parallel + explicit=false in meta.json."""
     from book_translator.parsers import ParseError
 
     with patch("book_translator.cli._parse_file", side_effect=ParseError("boom")):
@@ -1208,16 +1209,16 @@ def test_output_mode_metadata_default(runner, tmp_store, sample_txt):
     runs = list(tmp_store.iterdir())
     assert len(runs) == 1
     meta = json.loads((runs[0] / "meta.json").read_text())
-    assert meta["params"]["output_mode"] == "parallel"
-    assert meta["params"]["output_mode_explicit"] is False
+    assert meta["params"]["mode"] == "parallel"
+    assert meta["params"]["mode_explicit"] is False
 
 
-def test_mode_interactive_now_rejected(runner, tmp_store, sample_txt):
-    """--mode interactive is no longer valid (moved to --output-mode); exits code 2."""
+def test_granularity_interactive_now_rejected(runner, tmp_store, sample_txt):
+    """--granularity interactive is not valid (interactive is a --mode); exits code 2."""
     result = runner.invoke(
         app,
-        ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--mode", "interactive"],
+        ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--granularity", "interactive"],
     )
     assert result.exit_code == 2
-    assert "per-page" in result.output
-    assert "per-sentence" in result.output
+    assert "page" in result.output
+    assert "sentence" in result.output
