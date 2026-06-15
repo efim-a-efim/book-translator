@@ -33,7 +33,7 @@ See: `.planning/PROJECT.md` (updated 2026-06-12)
 Phase: 12 (CSS + CLI Integration) — COMPLETE
 Plan: Not started
 Status: Phase complete
-Last activity: 2026-06-15 - Completed quick task 260615-c0w: Split output-mode from --mode
+Last activity: 2026-06-15 - Completed quick task 260615-dkx: Rename CLI options (--mode→--granularity, --output-mode→--mode)
 
 ## Phase Progress
 
@@ -77,6 +77,7 @@ Overall: 2/2 phases complete [████████████████�
 | 260604-l64 | Add batching for paragraphs translation | 2026-06-04 | 487842f | [260604-l64-add-batching-for-paragraphs-translation](./quick/260604-l64-add-batching-for-paragraphs-translation/) |
 | 260612-se3 | Swap language order: target first, source after (interactive: target visible by default) | 2026-06-12 | 6dd97b7 | [260612-se3-swap-language-order](./quick/260612-se3-swap-language-order/) |
 | 260615-c0w | Split interactive/monolingual output off `--mode` into new `--output-mode` flag; `--mode` now granularity-only | 2026-06-15 | 256998a | [260615-c0w-split-interactive-books-generation-from-](./quick/260615-c0w-split-interactive-books-generation-from-/) |
+| 260615-dkx | Rename CLI options: `--mode per-page\|per-sentence` → `--granularity page\|sentence`; `--output-mode` → `--mode` (pure rename, logic unchanged) | 2026-06-15 | f8d7ee2 | [260615-dkx-rename-cli-options-mode-per-page-per-sen](./quick/260615-dkx-rename-cli-options-mode-per-page-per-sen/) |
 
 ## Performance Metrics
 
