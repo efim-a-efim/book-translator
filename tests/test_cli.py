@@ -774,7 +774,7 @@ def test_debug_base_url_shown_when_set(runner, tmp_store, sample_txt):
 
 
 def test_invalid_mode_exits_code_2(runner, tmp_store, sample_txt):
-    """Invalid --mode value exits with code 2 and lists valid modes."""
+    """Invalid --mode value exits with code 2 and lists valid granularity modes."""
     result = runner.invoke(
         app,
         ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--mode", "nope"],
@@ -782,7 +782,8 @@ def test_invalid_mode_exits_code_2(runner, tmp_store, sample_txt):
     assert result.exit_code == 2
     assert "per-page" in result.output
     assert "per-sentence" in result.output
-    assert "monolingual" in result.output
+    # monolingual / interactive moved to --output-mode; no longer valid --mode values
+    assert "monolingual" not in result.output
 
 
 def test_invalid_mode_no_run_created(runner, tmp_store, sample_txt):
@@ -806,12 +807,12 @@ def test_per_sentence_mode_recognized(runner, tmp_store, sample_txt):
 
 
 def test_monolingual_mode_works(runner, tmp_store, sample_txt):
-    """--mode monolingual runs the monolingual pipeline."""
-    # This test verifies monolingual mode is recognized and dispatches correctly
+    """--output-mode monolingual is recognized (output format moved off --mode)."""
+    # This test verifies monolingual output mode is recognized and dispatches correctly
     # The actual assembly is tested in test_assembler.py
     result = runner.invoke(
         app,
-        ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--mode", "monolingual", "--api-key", "test-key", "--help"],
+        ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--output-mode", "monolingual", "--api-key", "test-key", "--help"],
     )
     assert result.exit_code == 0
 
@@ -851,7 +852,7 @@ def test_batch_token_budget_rejected_with_per_page(runner, tmp_store, sample_txt
 
 
 def test_interactive_mode_is_valid(runner, tmp_store, sample_txt):
-    """--mode interactive dispatches to assemble_interactive() without error."""
+    """--output-mode interactive dispatches to assemble_interactive() without error."""
     mock_doc = MagicMock()
     mock_doc.to_json.return_value = '{"title":"T","author":"A","source_lang":"en","chapters":[]}'
     mock_doc.chapters = []
@@ -871,7 +872,7 @@ def test_interactive_mode_is_valid(runner, tmp_store, sample_txt):
     ):
         result = runner.invoke(
             app,
-            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--mode", "interactive", "--api-key", "test-key"],
+            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--output-mode", "interactive", "--api-key", "test-key"],
         )
 
     assert result.exit_code == 0, result.output
@@ -1017,7 +1018,7 @@ def test_mode_metadata_no_secret_leakage(runner, tmp_store, sample_txt):
 
 
 def test_monolingual_output_gets_epub_extension(runner, tmp_store, sample_txt):
-    """--mode monolingual produces default output path ending in .epub (MONO-02, D-04)."""
+    """--output-mode monolingual produces default output path ending in .epub (MONO-02, D-04)."""
     mock_doc = MagicMock()
     mock_doc.to_json.return_value = '{"title":"T","author":"A","source_lang":"en","chapters":[]}'
     mock_doc.chapters = []
@@ -1035,7 +1036,7 @@ def test_monolingual_output_gets_epub_extension(runner, tmp_store, sample_txt):
     ):
         result = runner.invoke(
             app,
-            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--mode", "monolingual", "--api-key", "test-key"],
+            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--output-mode", "monolingual", "--api-key", "test-key"],
         )
 
     assert result.exit_code == 0, result.output
