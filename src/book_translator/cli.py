@@ -25,7 +25,9 @@ from book_translator.translator.engine import translate_sentence
 
 SUPPORTED_SUFFIXES = {".epub", ".txt", ".md", ".markdown"}
 
-VALID_MODES = {"per-page", "per-sentence", "monolingual", "interactive"}
+VALID_MODES = {"per-page", "per-sentence"}
+
+VALID_OUTPUT_MODES = {"parallel", "interactive", "monolingual"}
 
 app = typer.Typer(add_completion=False, help="AI-powered bilingual book translator.")
 
@@ -118,7 +120,8 @@ def translate_cmd(
     max_retries: int = typer.Option(5, "--max-retries", help="Max retries per paragraph"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show step-level logs"),
     debug: bool = typer.Option(False, "--debug", help="Enable debug mode: DEBUG logging + detailed diagnostics (implies --verbose)"),  # noqa: E501
-    mode: str | None = typer.Option(None, "--mode", help="Translation mode: per-page, per-sentence, monolingual, or interactive"),
+    mode: str | None = typer.Option(None, "--mode", help="Translation granularity: per-page (paragraph) or per-sentence (sentence)"),
+    output_mode: str | None = typer.Option(None, "--output-mode", help="Output format: parallel, interactive, or monolingual"),
     batch_token_budget: int | None = typer.Option(None, "--batch-token-budget", help="Token budget per batch - only for per-sentence mode"),
 ) -> None:
     """Translate a book file into bilingual or monolingual output."""
@@ -148,6 +151,15 @@ def translate_cmd(
     if mode is not None and mode not in VALID_MODES:
         typer.echo(
             f"Error: invalid mode '{mode}'. Valid modes: {', '.join(sorted(VALID_MODES))}",
+            err=True,
+        )
+        raise typer.Exit(code=2)
+
+    # Step 2b' — Output-mode validation before run creation (OM-01, OM-04)
+    effective_output_mode = output_mode if output_mode is not None else "parallel"
+    if output_mode is not None and output_mode not in VALID_OUTPUT_MODES:
+        typer.echo(
+            f"Error: invalid output mode '{output_mode}'. Valid output modes: {', '.join(sorted(VALID_OUTPUT_MODES))}",
             err=True,
         )
         raise typer.Exit(code=2)
@@ -193,6 +205,8 @@ def translate_cmd(
             "started_at": datetime.now(UTC).isoformat(),
             "mode": effective_mode,
             "mode_explicit": mode is not None,
+            "output_mode": effective_output_mode,
+            "output_mode_explicit": output_mode is not None,
         },
     )
     run_id = store.create_run(meta)
@@ -272,9 +286,9 @@ def translate_cmd(
         # Step 6d — Assemble output
         if verbose:
             typer.echo("Assembling output ...")
-        if effective_mode == "monolingual":
+        if effective_output_mode == "monolingual":
             out_path = assemble_monolingual(job_dir=run_dir, target_lang=target_lang)
-        elif effective_mode == "interactive":
+        elif effective_output_mode == "interactive":
             out_path = assemble_interactive(job_dir=run_dir, target_lang=target_lang)
         else:
             out_path = assemble(job_dir=run_dir, target_lang=target_lang)
