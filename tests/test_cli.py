@@ -1042,3 +1042,181 @@ def test_monolingual_output_gets_epub_extension(runner, tmp_store, sample_txt):
     assert "Done." in result.output
     output_line = [line for line in result.output.splitlines() if "Done." in line][0]
     assert output_line.endswith(".epub"), f"Expected .epub extension, got: {output_line}"
+
+
+# --- OM: --output-mode flag (output format) split from --mode (granularity) ---
+
+
+def _make_mock_doc():
+    mock_doc = MagicMock()
+    mock_doc.to_json.return_value = '{"title":"T","author":"A","source_lang":"en","chapters":[]}'
+    mock_doc.chapters = []
+    return mock_doc
+
+
+def test_output_mode_interactive_dispatches_assemble_interactive(runner, tmp_store, sample_txt):
+    """--output-mode interactive dispatches assemble_interactive()."""
+    mock_doc = _make_mock_doc()
+
+    def _fake(job_dir, target_lang):
+        out = job_dir / "dst" / f"out.{target_lang}.epub"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_bytes(b"x")
+        return out
+
+    with (
+        patch("book_translator.cli._parse_file", return_value=mock_doc),
+        patch("book_translator.cli.translate", new_callable=AsyncMock),
+        patch("book_translator.cli.assemble_interactive", side_effect=_fake) as mock_int,
+        patch("book_translator.cli.assemble_monolingual") as mock_mono,
+        patch("book_translator.cli.assemble") as mock_par,
+    ):
+        result = runner.invoke(
+            app,
+            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--output-mode", "interactive", "--api-key", "test-key"],
+        )
+    assert result.exit_code == 0, result.output
+    mock_int.assert_called_once()
+    mock_mono.assert_not_called()
+    mock_par.assert_not_called()
+
+
+def test_output_mode_monolingual_dispatches_assemble_monolingual(runner, tmp_store, sample_txt):
+    """--output-mode monolingual dispatches assemble_monolingual()."""
+    mock_doc = _make_mock_doc()
+
+    def _fake(job_dir, target_lang):
+        out = job_dir / "dst" / f"out.{target_lang}.epub"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_bytes(b"x")
+        return out
+
+    with (
+        patch("book_translator.cli._parse_file", return_value=mock_doc),
+        patch("book_translator.cli.translate", new_callable=AsyncMock),
+        patch("book_translator.cli.assemble_monolingual", side_effect=_fake) as mock_mono,
+        patch("book_translator.cli.assemble_interactive") as mock_int,
+        patch("book_translator.cli.assemble") as mock_par,
+    ):
+        result = runner.invoke(
+            app,
+            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--output-mode", "monolingual", "--api-key", "test-key"],
+        )
+    assert result.exit_code == 0, result.output
+    mock_mono.assert_called_once()
+    mock_int.assert_not_called()
+    mock_par.assert_not_called()
+
+
+def test_output_mode_omitted_defaults_to_parallel(runner, tmp_store, sample_txt):
+    """Omitted --output-mode dispatches the parallel assembler (assemble)."""
+    mock_doc = _make_mock_doc()
+
+    def _fake(job_dir, target_lang):
+        out = job_dir / "dst" / f"out.{target_lang}.epub"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_bytes(b"x")
+        return out
+
+    with (
+        patch("book_translator.cli._parse_file", return_value=mock_doc),
+        patch("book_translator.cli.translate", new_callable=AsyncMock),
+        patch("book_translator.cli.assemble", side_effect=_fake) as mock_par,
+        patch("book_translator.cli.assemble_interactive") as mock_int,
+        patch("book_translator.cli.assemble_monolingual") as mock_mono,
+    ):
+        result = runner.invoke(
+            app,
+            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--api-key", "test-key"],
+        )
+    assert result.exit_code == 0, result.output
+    mock_par.assert_called_once()
+    mock_int.assert_not_called()
+    mock_mono.assert_not_called()
+
+
+def test_invalid_output_mode_exits_code_2(runner, tmp_store, sample_txt):
+    """Invalid --output-mode value exits code 2 and lists valid output modes."""
+    result = runner.invoke(
+        app,
+        ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--output-mode", "bogus"],
+    )
+    assert result.exit_code == 2
+    assert "parallel" in result.output
+    assert "interactive" in result.output
+    assert "monolingual" in result.output
+
+
+def test_invalid_output_mode_no_run_created(runner, tmp_store, sample_txt):
+    """Invalid --output-mode does not create a run directory."""
+    runner.invoke(
+        app,
+        ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--output-mode", "bogus"],
+    )
+    assert list(tmp_store.iterdir()) == []
+
+
+def test_output_mode_interactive_with_per_sentence_accepted(runner, tmp_store, sample_txt):
+    """--output-mode interactive --mode per-sentence is accepted (no invalid error)."""
+    mock_doc = _make_mock_doc()
+
+    def _fake(job_dir, target_lang):
+        out = job_dir / "dst" / f"out.{target_lang}.epub"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_bytes(b"x")
+        return out
+
+    with (
+        patch("book_translator.cli._parse_file", return_value=mock_doc),
+        patch("book_translator.cli.translate_sentence", new_callable=AsyncMock),
+        patch("book_translator.cli.assemble_interactive", side_effect=_fake),
+    ):
+        result = runner.invoke(
+            app,
+            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--output-mode", "interactive", "--mode", "per-sentence", "--api-key", "test-key"],
+        )
+    assert result.exit_code == 0, result.output
+    assert "invalid" not in result.output.lower()
+
+
+def test_output_mode_metadata(runner, tmp_store, sample_txt):
+    """Runs record output_mode and output_mode_explicit in meta.json."""
+    from book_translator.parsers import ParseError
+
+    with patch("book_translator.cli._parse_file", side_effect=ParseError("boom")):
+        runner.invoke(
+            app,
+            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--api-key", "test-key", "--output-mode", "interactive"],
+        )
+    runs = list(tmp_store.iterdir())
+    assert len(runs) == 1
+    meta = json.loads((runs[0] / "meta.json").read_text())
+    assert meta["params"]["output_mode"] == "interactive"
+    assert meta["params"]["output_mode_explicit"] is True
+
+
+def test_output_mode_metadata_default(runner, tmp_store, sample_txt):
+    """Omitted --output-mode records parallel + explicit=false in meta.json."""
+    from book_translator.parsers import ParseError
+
+    with patch("book_translator.cli._parse_file", side_effect=ParseError("boom")):
+        runner.invoke(
+            app,
+            ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--api-key", "test-key"],
+        )
+    runs = list(tmp_store.iterdir())
+    assert len(runs) == 1
+    meta = json.loads((runs[0] / "meta.json").read_text())
+    assert meta["params"]["output_mode"] == "parallel"
+    assert meta["params"]["output_mode_explicit"] is False
+
+
+def test_mode_interactive_now_rejected(runner, tmp_store, sample_txt):
+    """--mode interactive is no longer valid (moved to --output-mode); exits code 2."""
+    result = runner.invoke(
+        app,
+        ["translate", str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--mode", "interactive"],
+    )
+    assert result.exit_code == 2
+    assert "per-page" in result.output
+    assert "per-sentence" in result.output
