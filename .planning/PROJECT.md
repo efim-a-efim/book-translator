@@ -16,7 +16,17 @@ Post-v3 quick tasks reshaped the CLI surface: `--mode`→`--granularity` (page/s
 
 **Codebase:** 2204 LOC Python (src) · 230 test functions · 4 modes (per-page, per-sentence, monolingual, interactive).
 
-**Next milestone:** not yet defined — run `/gsd-new-milestone`.
+**Next milestone:** v4 CLI Tool Polishing — single-command, fully ephemeral CLI.
+
+## Current Milestone: v4 CLI Tool Polishing
+
+**Goal:** Make book-translator a single-command, fully ephemeral CLI tool.
+
+**Target features:**
+- Single entrypoint — remove `translate`/`list`/`cleanup` subcommands; all translate options promoted to the root executable (`book-translator --source-lang ... INPUT`)
+- Ephemeral runs under system temp (`tempfile`) — always print the run directory path; always delete the run directory after the run (success AND failure)
+- `--preserve-temp` flag to keep the run directory for debugging
+- Retire persistence/resume/status-check capabilities (CLI-only positioning)
 
 ## Requirements
 
@@ -64,6 +74,9 @@ Post-v3 quick tasks reshaped the CLI surface: `--mode`→`--granularity` (page/s
 - OAuth or user accounts — no authentication needed for local CLI tool
 - Multi-target output in a single file (e.g. ru+en+de) — deferred; mode work first
 - Smart-mode pre-analysis (glossary, character names, style notes) — deferred to a later quality-focused milestone
+- Persistent background jobs / run-ID resumption — removed in v4; runs are ephemeral, one synchronous run per invocation
+- Job results surviving restarts (on-disk run store under `~/.local/share`) — removed in v4; runs live in system temp and are deleted after each run
+- Status-check / result-download / `list` / `cleanup` subcommands — removed in v4; CLI is a single synchronous command with no stored history
 
 ## Context
 
@@ -120,4 +133,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-15 after v3 Interactive Parallel EPUB milestone shipped*
+*Last updated: 2026-06-15 after v4 CLI Tool Polishing milestone started*
