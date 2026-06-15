@@ -4,7 +4,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from book_translator.cli import SUPPORTED_SUFFIXES, app
 
-
 # --- Validation tests (exit code 2) ---
 
 
@@ -585,7 +584,10 @@ def test_sentence_granularity_with_batch_token_budget(runner, sample_txt):
     """--granularity sentence --batch-token-budget is accepted."""
     result = runner.invoke(
         app,
-        [str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--granularity", "sentence", "--batch-token-budget", "2000", "--api-key", "test-key"],
+        [
+            str(sample_txt), "--source-lang", "en", "--target-lang", "ru",
+            "--granularity", "sentence", "--batch-token-budget", "2000", "--api-key", "test-key",
+        ],
     )
     assert "--batch-token-budget" not in result.output or "only valid for" not in result.output
 
@@ -726,7 +728,10 @@ def test_mode_interactive_with_sentence_granularity_accepted(runner, sample_txt)
     ):
         result = runner.invoke(
             app,
-            [str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--mode", "interactive", "--granularity", "sentence", "--api-key", "test-key"],
+            [
+                str(sample_txt), "--source-lang", "en", "--target-lang", "ru",
+                "--mode", "interactive", "--granularity", "sentence", "--api-key", "test-key",
+            ],
         )
     assert result.exit_code == 0, result.output
     assert "invalid" not in result.output.lower()
