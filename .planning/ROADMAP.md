@@ -49,7 +49,7 @@ See: `.planning/milestones/v3-ROADMAP.md`
 
 ### v4 CLI Tool Polishing
 
-- [ ] **Phase 13: Single-Command Ephemeral CLI** (2 plans) — Collapse to a root command (drop `translate`/`list`/`cleanup`), run under system temp, print the run dir only under a debug posture, and delete it after every run unless `--preserve-temp`
+- [x] **Phase 13: Single-Command Ephemeral CLI** (2 plans) — Collapse to a root command (drop `translate`/`list`/`cleanup`), run under system temp, print the run dir only under a debug posture, and delete it after every run unless `--preserve-temp` (completed 2026-06-15)
 
 ## Phase Details
 
@@ -72,7 +72,7 @@ See: `.planning/milestones/v3-ROADMAP.md`
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 13-02-PLAN.md — Rewrite the test suite: drop the `translate` token, delete store/list/cleanup tests, add ephemeral behavioral tests
+- [x] 13-02-PLAN.md — Rewrite the test suite: drop the `translate` token, delete store/list/cleanup tests, add ephemeral behavioral tests
 
 ## Progress
 
@@ -92,4 +92,4 @@ See: `.planning/milestones/v3-ROADMAP.md`
 | 10.2. Fix MONO-02 + MONO-04 | v2 | 1/1 | ✓ Complete | 2026-06-11 |
 | 11. HTML Generation Engine | v3 | 2/2 | ✓ Complete | 2026-06-12 |
 | 12. CSS + CLI Integration | v3 | 2/2 | ✓ Complete | 2026-06-12 |
-| 13. Single-Command Ephemeral CLI | v4 | 1/2 | In Progress|  |
+| 13. Single-Command Ephemeral CLI | v4 | 2/2 | Complete   | 2026-06-15 |
