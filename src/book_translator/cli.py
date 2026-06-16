@@ -177,8 +177,12 @@ def main(
 
     # Step 5 — Create ephemeral run dir under $TMPDIR (D-02, RUN-01)
     job_dir = Path(tempfile.mkdtemp(prefix="book-translator-"))
-    (job_dir / "src").mkdir()
-    (job_dir / "dst").mkdir()
+    try:
+        (job_dir / "src").mkdir()
+        (job_dir / "dst").mkdir()
+    except OSError:
+        shutil.rmtree(job_dir, ignore_errors=True)
+        raise
     src_dir = job_dir / "src"
     dst_dir = job_dir / "dst"
     if verbose or debug or preserve:
