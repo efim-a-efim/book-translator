@@ -1,34 +1,32 @@
+<!-- generated-by: gsd-doc-writer -->
 # book-translator
 
-**AI-powered bilingual book translator.** Converts EPUB, TXT, and Markdown books into parallel-reading EPUBs — original and translated paragraphs side-by-side.
+**AI-powered bilingual book translator.** Translates EPUB, plain text, and Markdown books into bilingual or monolingual EPUBs using any OpenAI-compatible API — for language learners and bilingual readers.
 
 [![CI](https://github.com/efim-a-efim/book-translator/actions/workflows/ci.yml/badge.svg)](https://github.com/efim-a-efim/book-translator/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
 
 ## Features
 
-- **Multiple input formats:** EPUB, plain text (`.txt`), Markdown (`.md`)
-- **Bilingual output:** EPUB with original and translated paragraphs alternating
-- **Any OpenAI-compatible API:** OpenAI, OpenRouter, local models (Ollama, LM Studio)
-- **Context-aware translation:** surrounding paragraphs included in each prompt
-- **Resilient:** exponential-backoff retry on rate limits and transient errors
-- **Run management:** failed runs are preserved for inspection; `list` and `cleanup` commands
+- **Multiple input formats:** EPUB, plain text (`.txt`), Markdown (`.md`, `.markdown`)
+- **Four output variations:** combine `--granularity` (page or sentence) with `--mode` (parallel, interactive, monolingual)
+- **Any OpenAI-compatible API:** OpenAI, OpenRouter, or local servers (Ollama, LM Studio) via `--base-url`
+- **Context-aware translation:** surrounding paragraphs included in each prompt (`--context-window`)
+- **Resilient:** concurrent requests with exponential-backoff retry on transient errors
+- **Ephemeral by default:** each run executes in a self-cleaning system-temp directory, removed after the run unless `--preserve-temp` is set
 
 ---
 
 ## Installation
 
-**From git (recommended until PyPI release):**
+book-translator requires **Python >= 3.11**.
+
+**From git:**
 
 ```bash
 pip install git+https://github.com/efim-a-efim/book-translator.git
-```
-
-**From PyPI (coming soon):**
-
-```bash
-pip install book-translator
 ```
 
 **For development:**
@@ -36,192 +34,128 @@ pip install book-translator
 ```bash
 git clone https://github.com/efim-a-efim/book-translator.git
 cd book-translator
-uv sync --all-extras          # or: pip install -e ".[dev]"
+pip install -e ".[dev]"
 ```
+
+The package installs a single console command: `book-translator`.
 
 ---
 
-## Quickstart
+## Quick start
 
 ```bash
-# Set your API key
+# 1. Set your API key
 export OPENAI_API_KEY=sk-...
 
-# Translate an EPUB from English to Russian
-book-translator translate my-book.epub --source-lang en --target-lang ru
+# 2. Translate an EPUB from English to Russian
+book-translator my-book.epub --source-lang en --target-lang ru
 
-# Done. Output: ./my-book.ru.epub
+# 3. Done. Output written to ./my-book.ru.epub
 ```
+
+`book-translator` is a single command — pass the input file as the first argument followed by options. There are no subcommands.
 
 ---
 
-## CLI Reference
-
-### `translate` — Translate a book
+## Usage
 
 ```
-book-translator translate <FILE> [OPTIONS]
+book-translator [OPTIONS] INPUT_FILE
 ```
 
-**Arguments:**
+`INPUT_FILE` must be one of: `.epub`, `.txt`, `.md`, `.markdown`.
 
-| Argument | Description |
-|----------|-------------|
-| `FILE` | Input file path. Supported: `.epub`, `.txt`, `.md`, `.markdown` |
-
-**Options:**
+### Options
 
 | Option | Short | Default | Description |
 |--------|-------|---------|-------------|
-| `--source-lang TEXT` | `-s` | *(required)* | Source language code (e.g. `en`, `fr`, `de`) |
-| `--target-lang TEXT` | `-t` | *(required)* | Target language code (e.g. `ru`, `zh`, `es`) |
-| `--model TEXT` | `-m` | `openai/gpt-5.4-mini` | OpenAI model name |
-| `--api-key TEXT` | | `$OPENAI_API_KEY` | API key |
-| `--base-url TEXT` | | `$OPENAI_BASE_URL` | Custom API base URL |
-| `--output PATH` | `-o` | `<cwd>/<stem>.<target>.epub` | Output EPUB path |
-| `--context-window INT` | | `3` | Surrounding paragraphs for context |
-| `--concurrency INT` | | `8` | Concurrent translation requests |
-| `--max-retries INT` | | `5` | Max retries per paragraph |
+| `--source-lang` | `-s` | *(required)* | Source language code (e.g. `en`) |
+| `--target-lang` | `-t` | *(required)* | Target language code (e.g. `ru`) |
+| `--model` | `-m` | `openai/gpt-5.4-mini` | Model name |
+| `--api-key` | | *(from env)* | API key (overrides `BOOK_TRANSLATOR_API_KEY` / `OPENAI_API_KEY`) |
+| `--base-url` | | `$OPENAI_BASE_URL` | Custom OpenAI-compatible base URL |
+| `--output` | `-o` | `<cwd>/<stem>.<target_lang>.epub` | Output EPUB path |
+| `--context-window` | | `3` | Translation context window size |
+| `--concurrency` | | `8` | Concurrent translation requests |
+| `--max-retries` | | `5` | Max retries per paragraph |
+| `--granularity` | | `page` | Translation granularity: `page` or `sentence` |
+| `--mode` | | `parallel` | Output format: `parallel`, `interactive`, or `monolingual` |
+| `--batch-token-budget` | | *(none)* | Token budget per batch — only valid with `--granularity sentence` |
 | `--verbose` | `-v` | off | Show step-level logs |
+| `--debug` | | off | DEBUG logging + diagnostics (implies `--verbose` and `--preserve-temp`) |
+| `--preserve-temp` | | off | Keep the run directory after the run instead of deleting it |
 
-**Exit codes:**
+### Output variations
+
+`--granularity` controls how source units are translated; `--mode` controls how the output EPUB is assembled:
+
+| Variation | Flags | Result |
+|-----------|-------|--------|
+| Per-page parallel | `--granularity page --mode parallel` (defaults) | Each paragraph followed by its translation |
+| Per-sentence | `--granularity sentence` | Translation aligned at sentence level |
+| Monolingual | `--mode monolingual` | Translated text only, no original |
+| Interactive | `--mode interactive` | Original with translations revealed on interaction |
+
+### Examples
+
+```bash
+# Translate via OpenRouter
+book-translator novel.epub -s en -t ru \
+  --model mistralai/mistral-7b-instruct \
+  --base-url https://openrouter.ai/api/v1 \
+  --api-key "$OPENROUTER_API_KEY"
+
+# Sentence-level granularity with a custom batch token budget
+book-translator novel.epub -s en -t ru \
+  --granularity sentence --batch-token-budget 4000
+
+# Monolingual output to a specific path
+book-translator book.txt -s fr -t en --mode monolingual --output ~/Desktop/book.en.epub
+
+# Use a local model (Ollama) and keep the run directory for inspection
+book-translator chapter.md -s en -t de \
+  --model llama3.2 --base-url http://localhost:11434/v1 --api-key ollama \
+  --verbose --preserve-temp
+```
+
+### API key resolution
+
+The API key is resolved in this order:
+
+1. `--api-key` flag
+2. `BOOK_TRANSLATOR_API_KEY` environment variable
+3. `OPENAI_API_KEY` environment variable
+
+A custom endpoint can also be set via the `OPENAI_BASE_URL` environment variable or the `--base-url` flag.
+
+### Ephemeral run directories
+
+Each run executes inside a temporary directory created under the system temp location (prefix `book-translator-`). On success or failure the directory is deleted automatically. Pass `--preserve-temp` (or `--debug`, which implies it) to keep the directory for inspection; its path is printed when preserved or in verbose/debug output.
+
+### Exit codes
 
 | Code | Meaning |
 |------|---------|
 | `0` | Success — output EPUB written |
-| `1` | Translation or parse error — run directory preserved |
-| `2` | Bad arguments (unsupported file type, file not found) |
+| `1` | Parse or translation error |
+| `2` | Bad arguments (unsupported file type, file not found, invalid `--granularity`/`--mode`) |
 
-**Examples:**
+---
+
+## Development
+
+Run the test suite (210 tests) and linter:
 
 ```bash
-# Translate using OpenRouter
-book-translator translate novel.epub -s en -t ru \
-  --model mistralai/mistral-7b-instruct \
-  --base-url https://openrouter.ai/api/v1 \
-  --api-key $OPENROUTER_API_KEY
-
-# Specify output path
-book-translator translate book.txt -s fr -t en --output ~/Desktop/book.en.epub
-
-# Verbose output
-book-translator translate chapter.md -s en -t de --verbose
+pytest
+ruff check .
 ```
-
----
-
-### `list` — List preserved runs
-
-```
-book-translator list
-```
-
-Lists failed (and any preserved) translation runs with their state, start time, and directory path. Useful for inspecting failed jobs.
-
-**Output columns:** `RUN ID`, `DATE`, `STATE`, `PATH`
-
----
-
-### `cleanup` — Remove terminal runs
-
-```
-book-translator cleanup [--verbose]
-```
-
-Deletes all preserved runs in terminal states (`failed`, `completed`). Skips `running` and `unknown` runs.
-
-| Option | Description |
-|--------|-------------|
-| `--verbose` / `-v` | Print each deleted run ID |
-
----
-
-## Environment Variables
-
-| Variable | Purpose |
-|----------|---------|
-| `OPENAI_API_KEY` | API key (checked first) |
-| `OPENAI_BASE_URL` | Custom OpenAI-compatible base URL |
-| `OPENAI_API_KEY` | Fallback API key if `OPENAI_API_KEY` is not set |
-
-**Precedence:** `--api-key` flag → `OPENAI_API_KEY` → `OPENAI_API_KEY`
-
----
-
-## API Providers
-
-### OpenAI (default)
-
-```bash
-export OPENAI_API_KEY=sk-...
-book-translator translate book.epub -s en -t ru
-```
-
-### OpenRouter
-
-```bash
-book-translator translate book.epub -s en -t ru \
-  --model mistralai/mistral-large \
-  --base-url https://openrouter.ai/api/v1 \
-  --api-key $OPENROUTER_API_KEY
-```
-
-### Local models (Ollama, LM Studio, etc.)
-
-```bash
-book-translator translate book.epub -s en -t ru \
-  --model llama3.2 \
-  --base-url http://localhost:11434/v1 \
-  --api-key ollama
-```
-
-Any OpenAI-compatible API endpoint works with `--base-url`.
-
----
-
-## Output Format
-
-The output is a valid EPUB where each original paragraph is immediately followed by its translation. Structure:
-
-```
-[Original paragraph 1]
-[Translated paragraph 1]
-[Original paragraph 2]
-[Translated paragraph 2]
-...
-```
-
-- Chapter titles are translated and paired
-- Oversized chapters are automatically split to stay under ~300 KB (e-reader compatibility)
-- Output file name: `<stem>.<target_lang>.epub` (e.g. `my-book.ru.epub`)
-
----
-
-## Troubleshooting
-
-**`Error: unsupported file type`**  
-Only `.epub`, `.txt`, `.md`, `.markdown` are supported. FB2 support is planned for v2.
-
-**`Error: translation failed — 401`**  
-API key is missing or invalid. Set `OPENAI_API_KEY` or pass `--api-key`.
-
-**`Error: translation failed — 429`**  
-Rate limited. The tool retries automatically with exponential backoff. Reduce `--concurrency` if persistent.
-
-**`Error: parse failed — DRM encrypted EPUB`**  
-The EPUB is DRM-protected. Remove DRM before translating (with appropriate tooling and for content you own).
-
-**Run preserved after failure**  
-Use `book-translator list` to see the run directory, then inspect logs there. Use `book-translator cleanup` to delete all failed runs.
 
 ---
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make changes and run tests: `pytest` + `ruff check .`
-4. Submit a pull request
+Contributions are welcome. Fork the repository, create a feature branch, run `pytest` and `ruff check .`, then open a pull request.
 
 ---
 
