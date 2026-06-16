@@ -43,7 +43,11 @@ def _copy_or_move(src: Path, dst: Path) -> None:
     except OSError:
         tmp_dst = dst.with_suffix(dst.suffix + ".tmp")
         shutil.copy2(src, tmp_dst)
-        os.replace(tmp_dst, dst)
+        try:
+            os.replace(tmp_dst, dst)
+        except OSError:
+            tmp_dst.unlink(missing_ok=True)
+            raise
         src.unlink(missing_ok=True)
 
 
