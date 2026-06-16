@@ -173,8 +173,9 @@ def main(
 
     # Step 4 — Determine output path (D-17)
     stem = input_file.stem
-    if stem.endswith(f".{source_lang}"):
-        stem = stem[: -(len(source_lang) + 1)]
+    suffix_token = f".{source_lang}"
+    if stem.endswith(suffix_token) and len(stem) > len(suffix_token):
+        stem = stem[: -len(suffix_token)]
     _ext = ".epub"
     default_output = Path.cwd() / f"{stem}.{target_lang}{_ext}"
     output_dest = output if output is not None else default_output
