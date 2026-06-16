@@ -71,7 +71,11 @@ def _parse_file(input_path: Path) -> object:
 def _report_debug_failures(dst_dir: Path) -> None:
     """In debug mode: count [TRANSLATION FAILED] placeholders and report to stdout."""
     dst_jsons = list(dst_dir.glob("*.json"))
-    if not dst_jsons:
+    if len(dst_jsons) != 1:
+        typer.echo(
+            f"[DEBUG] Skipping failure count: expected 1 dst JSON, found {len(dst_jsons)}",
+            err=True,
+        )
         return
     try:
         from book_translator.models.document import BookDocument
