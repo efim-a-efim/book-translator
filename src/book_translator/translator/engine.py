@@ -21,11 +21,9 @@ from book_translator.models.document import BookDocument, Paragraph
 from book_translator.translator.chunker import (
     DEFAULT_CONTEXT_TOKEN_BUDGET,
     MAX_PREVIOUS_CONTEXT_PARAGRAPHS,
-    SentenceBatch,
     TranslationBatch,
     _is_translatable,
     build_batch_context,
-    build_sentence_batches,
     build_sentence_chunks,
     build_translation_batches,
 )
@@ -232,6 +230,7 @@ async def translate(
 def _build_sentence_batch_message(batch_items: list) -> str:
     """Build user message for sentence batch translation."""
     import json
+
     payload = {
         "items": [{"id": item.id, "text": item.text} for item in batch_items],
     }
@@ -251,17 +250,14 @@ async def translate_sentence(
     progress_callback: Callable[[int, int], None] | None = None,
 ) -> None:
     """Translate document at sentence level with batched structured output.
-    
+
     For per-sentence mode:
     - Paragraphs are split into sentence chunks
     - Each chunk is translated and stored in sentence_translations
     - The assembler renders each sentence pair in the EPUB
     """
-    from book_translator.translator.chunker import (
-        SentenceChunk,
-        build_sentence_batches,
-    )
-    
+    from book_translator.translator.chunker import SentenceChunk, build_sentence_batches
+
     src_file = _find_source_json(job_dir)
     doc = BookDocument.from_json(src_file.read_text(encoding="utf-8"))
     chunks = build_sentence_chunks(doc, source_lang)
@@ -282,16 +278,18 @@ async def translate_sentence(
             ]
             try:
                 # Build a mock TranslationBatch for the existing translate_batch function
-                mock_batch = type("TB", (), {
-                    "items": [type("P", (), {"id": c.id, "text": c.text})() for c in batch_items],
-                    "context": batch_context,
-                })()
-                translations = await translate_batch(
-                    client, model, mock_batch, messages, max_retries, semaphore
-                )
+                mock_batch = type(
+                    "TB",
+                    (),
+                    {
+                        "items": [type("P", (), {"id": c.id, "text": c.text})() for c in batch_items],
+                        "context": batch_context,
+                    },
+                )()
+                translations = await translate_batch(client, model, mock_batch, messages, max_retries, semaphore)
             except Exception as exc:
                 raise TranslationError(f"Sentence translation batch failed: {exc}") from exc
-            
+
             for chunk in batch_items:
                 translation = translations.get(chunk.id, "[TRANSLATION FAILED]")
                 # Store sentence translations and chunk texts in the paragraph

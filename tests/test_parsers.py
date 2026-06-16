@@ -32,9 +32,7 @@ def _make_epub(chapters: list[tuple[str, str, str]]) -> bytes:
     for item_id, title, html_body in chapters:
         item = epub.EpubHtml(uid=item_id, file_name=f"{item_id}.xhtml")
         item.content = (
-            "<?xml version='1.0' encoding='utf-8'?>"
-            '<html xmlns="http://www.w3.org/1999/xhtml">'
-            f"<body>{html_body}</body></html>"
+            f"<?xml version='1.0' encoding='utf-8'?><html xmlns=\"http://www.w3.org/1999/xhtml\"><body>{html_body}</body></html>"
         ).encode()
         book.add_item(item)
         items.append(item)

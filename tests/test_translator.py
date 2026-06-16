@@ -27,9 +27,7 @@ def _make_mock_client(return_text: str = "Translated") -> MagicMock:
 
 def _make_mock_json_client(translations: dict[str, str] | None = None) -> MagicMock:
     payload = {
-        "translations": [
-            {"id": item_id, "text": text} for item_id, text in (translations or {"ch0:0": "Translated"}).items()
-        ]
+        "translations": [{"id": item_id, "text": text} for item_id, text in (translations or {"ch0:0": "Translated"}).items()]
     }
     return _make_mock_client(json.dumps(payload))
 
@@ -606,7 +604,7 @@ def test_sentence_chunk_header_not_split() -> None:
     )
     doc = BookDocument(title="T", chapters=[chapter])
     chunks = build_sentence_chunks(doc, "en")
-    
+
     # Header should be one chunk, not split
     header_chunks = [c for c in chunks if c.is_heading]
     assert len(header_chunks) == 1
@@ -626,7 +624,7 @@ def test_sentence_chunk_splits_paragraph() -> None:
     )
     doc = BookDocument(title="T", chapters=[chapter])
     chunks = build_sentence_chunks(doc, "en")
-    
+
     # Should have 1 chunk (3 sentences fit in one chunk)
     assert len(chunks) == 1
     assert "First sentence" in chunks[0].text
@@ -646,7 +644,7 @@ def test_sentence_chunk_4_word_merge() -> None:
     )
     doc = BookDocument(title="T", chapters=[chapter])
     chunks = build_sentence_chunks(doc, "en")
-    
+
     # "Two words" and "Three words" (4 words each) should merge into first chunk
     # "Fourth sentence" starts new chunk
     assert len(chunks) == 2
@@ -668,7 +666,7 @@ def test_sentence_chunk_3_sentence_limit() -> None:
     )
     doc = BookDocument(title="T", chapters=[chapter])
     chunks = build_sentence_chunks(doc, "en")
-    
+
     # Should split into chunks of max 3 sentences
     assert len(chunks) == 2
     # First chunk: One, Two, Three
@@ -691,7 +689,7 @@ def test_sentence_chunk_mixed_content() -> None:
     )
     doc = BookDocument(title="T", chapters=[chapter])
     chunks = build_sentence_chunks(doc, "en")
-    
+
     # Heading not split, body split into sentences
     assert len(chunks) == 3
     assert chunks[0].is_heading is True
@@ -716,7 +714,7 @@ def test_sentence_batch_groups_by_token_budget() -> None:
     )
     doc = BookDocument(title="T", chapters=[chapter])
     batches = build_sentence_batches(doc, "en", token_budget=1000)
-    
+
     # All short sentences should fit in one batch
     assert len(batches) == 1
     assert len(batches[0].items) == 3
@@ -783,13 +781,13 @@ async def test_translate_sentence_populates_chunk_texts(tmp_path: Path) -> None:
 
     # Discover chunk IDs produced by the chunker
     from book_translator.translator.chunker import build_sentence_chunks
+
     chunks = build_sentence_chunks(doc, "Russian")
     chunk_ids = {c.id: c.text for c in chunks}
 
-    mock_payload = {
-        "translations": [{"id": cid, "text": f"Trans({ctext})"} for cid, ctext in chunk_ids.items()]
-    }
+    mock_payload = {"translations": [{"id": cid, "text": f"Trans({ctext})"} for cid, ctext in chunk_ids.items()]}
     import json as _json
+
     mock_client = _make_mock_client(_json.dumps(mock_payload))
 
     @asynccontextmanager

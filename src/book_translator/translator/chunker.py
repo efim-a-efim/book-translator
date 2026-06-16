@@ -30,6 +30,7 @@ class TranslationBatch:
 @dataclass(frozen=True)
 class SentenceChunk:
     """A sentence-level translation unit."""
+
     id: str
     text: str
     paragraph_id: str
@@ -39,6 +40,7 @@ class SentenceChunk:
 def _ensure_punkt_data() -> None:
     """Download Punkt tokenizer data if not present."""
     import nltk
+
     try:
         nltk.data.find("tokenizers/punkt")
     except LookupError:
@@ -48,6 +50,7 @@ def _ensure_punkt_data() -> None:
 def _get_sentence_tokenizer(source_lang: str):
     """Get Punkt sentence tokenizer for the given language."""
     import nltk
+
     _ensure_punkt_data()
     return nltk.PunktSentenceTokenizer()
 
@@ -65,7 +68,7 @@ def _word_count(text: str) -> int:
 
 def build_sentence_chunks(doc: BookDocument, source_lang: str) -> list[SentenceChunk]:
     """Build sentence-level chunks from a document.
-    
+
     Rules:
     - Headers/sub-headers are emitted as single whole chunks (never split)
     - Paragraphs are split into sentences using Punkt
@@ -73,39 +76,38 @@ def build_sentence_chunks(doc: BookDocument, source_lang: str) -> list[SentenceC
     - No chunk exceeds 3 sentences
     """
     chunks: list[SentenceChunk] = []
-    
+
     for chapter in doc.chapters:
         for para in chapter.paragraphs:
             if para.kind == "heading":
                 # Headers are never sentence-split
-                chunks.append(SentenceChunk(
-                    id=para.id,
-                    text=para.text,
-                    paragraph_id=para.id,
-                    is_heading=True,
-                ))
+                chunks.append(
+                    SentenceChunk(
+                        id=para.id,
+                        text=para.text,
+                        paragraph_id=para.id,
+                        is_heading=True,
+                    )
+                )
             elif _is_translatable(para):
                 sentences = _split_into_sentences(para.text, source_lang)
                 if not sentences:
                     continue
-                    
+
                 # Build chunks respecting merge and limit rules
                 current_chunk_sentences: list[str] = []
                 current_chunk_ids: list[str] = []
-                
+
                 for i, sentence in enumerate(sentences):
                     sentence_id = f"{para.id}:s{i}"
                     word_count = _word_count(sentence)
-                    
+
                     # Check if this is a short sentence that should merge
-                    should_merge = (
-                        current_chunk_sentences
-                        and word_count <= MAX_WORDS_FOR_MERGE
-                    )
-                    
+                    should_merge = current_chunk_sentences and word_count <= MAX_WORDS_FOR_MERGE
+
                     # Check if adding would exceed 3-sentence limit
                     would_exceed_limit = len(current_chunk_sentences) >= MAX_SENTENCES_PER_CHUNK
-                    
+
                     if should_merge and not would_exceed_limit:
                         # Merge into current chunk
                         current_chunk_sentences.append(sentence)
@@ -113,23 +115,27 @@ def build_sentence_chunks(doc: BookDocument, source_lang: str) -> list[SentenceC
                     else:
                         # Flush current chunk if exists
                         if current_chunk_sentences:
-                            chunks.append(SentenceChunk(
-                                id=",".join(current_chunk_ids),
-                                text=" ".join(current_chunk_sentences),
-                                paragraph_id=para.id,
-                            ))
+                            chunks.append(
+                                SentenceChunk(
+                                    id=",".join(current_chunk_ids),
+                                    text=" ".join(current_chunk_sentences),
+                                    paragraph_id=para.id,
+                                )
+                            )
                         # Start new chunk
                         current_chunk_sentences = [sentence]
                         current_chunk_ids = [sentence_id]
-                
+
                 # Flush final chunk
                 if current_chunk_sentences:
-                    chunks.append(SentenceChunk(
-                        id=",".join(current_chunk_ids),
-                        text=" ".join(current_chunk_sentences),
-                        paragraph_id=para.id,
-                    ))
-    
+                    chunks.append(
+                        SentenceChunk(
+                            id=",".join(current_chunk_ids),
+                            text=" ".join(current_chunk_sentences),
+                            paragraph_id=para.id,
+                        )
+                    )
+
     return chunks
 
 
@@ -169,7 +175,7 @@ def _header_context(chapter: Chapter, idx: int) -> list[BatchContext]:
     context: list[BatchContext] = []
     if chapter.title.strip():
         context.append(BatchContext(kind="chapter_title", text=chapter.title.strip()))
-    for para in chapter.paragraphs[:idx + 1]:
+    for para in chapter.paragraphs[: idx + 1]:
         if para.kind == "heading" and para.text.strip():
             context.append(
                 BatchContext(
@@ -253,6 +259,7 @@ def build_translation_batches(
 @dataclass(frozen=True)
 class SentenceBatch:
     """A batch of sentence chunks for translation."""
+
     items: list[SentenceChunk]
     context: list[BatchContext]
 
@@ -278,7 +285,7 @@ def build_sentence_batches(
     token_budget: int = DEFAULT_SENTENCE_TOKEN_BUDGET,
 ) -> list[SentenceBatch]:
     """Build batches of sentence chunks respecting token budget.
-    
+
     Groups SentenceChunks into batches where total tokens <= token_budget.
     Includes context for translation continuity.
     """
@@ -287,12 +294,12 @@ def build_sentence_batches(
     current: list[SentenceChunk] = []
     current_tokens = 0
     current_chapter_id: str | None = None
-    
+
     for chunk in chunks:
         # Determine chapter for context
         location = _chapter_for_paragraph(doc, chunk.paragraph_id)
         chapter_id = location[0].id if location else None
-        
+
         chunk_tokens = _estimate_tokens(chunk.text)
         should_flush = bool(
             current
@@ -302,23 +309,27 @@ def build_sentence_batches(
                 or (location and _is_section_start(location[0], location[1]))
             )
         )
-        
+
         if should_flush:
-            batches.append(SentenceBatch(
-                items=current,
-                context=_build_sentence_batch_context(doc, current[0]) if current else [],
-            ))
+            batches.append(
+                SentenceBatch(
+                    items=current,
+                    context=_build_sentence_batch_context(doc, current[0]) if current else [],
+                )
+            )
             current = []
             current_tokens = 0
-        
+
         current.append(chunk)
         current_tokens += chunk_tokens
         current_chapter_id = chapter_id
-    
+
     if current:
-        batches.append(SentenceBatch(
-            items=current,
-            context=_build_sentence_batch_context(doc, current[0]) if current else [],
-        ))
-    
+        batches.append(
+            SentenceBatch(
+                items=current,
+                context=_build_sentence_batch_context(doc, current[0]) if current else [],
+            )
+        )
+
     return batches

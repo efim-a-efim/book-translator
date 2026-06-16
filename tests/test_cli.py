@@ -184,10 +184,14 @@ def test_translate_success_output_path(runner, sample_txt, tmp_path):
             app,
             [
                 str(sample_txt),
-                "--source-lang", "en",
-                "--target-lang", "ru",
-                "--api-key", "test-key",
-                "--output", str(out),
+                "--source-lang",
+                "en",
+                "--target-lang",
+                "ru",
+                "--api-key",
+                "test-key",
+                "--output",
+                str(out),
             ],
         )
     assert result.exit_code == 0, result.output
@@ -305,9 +309,12 @@ def test_api_key_flag_wins_over_both_envs_to_translate(monkeypatch, runner, samp
             app,
             [
                 str(sample_txt),
-                "--source-lang", "en",
-                "--target-lang", "ru",
-                "--api-key", "flag-key",
+                "--source-lang",
+                "en",
+                "--target-lang",
+                "ru",
+                "--api-key",
+                "flag-key",
             ],
         )
 
@@ -351,6 +358,7 @@ def test_debug_flag_accepted(runner, sample_txt):
 
 def test_debug_implies_progress_output(runner, sample_txt):
     """--debug implies verbose: progress callback fires and output is shown."""
+
     async def _fake_translate(**kwargs):
         kwargs["progress_callback"](1, 2)
         kwargs["progress_callback"](2, 2)
@@ -399,10 +407,14 @@ def test_debug_shows_model_and_path_diagnostics(runner, sample_txt):
             app,
             [
                 str(sample_txt),
-                "--source-lang", "en",
-                "--target-lang", "ru",
-                "--model", "test-model-xyz",
-                "--api-key", "test-key",
+                "--source-lang",
+                "en",
+                "--target-lang",
+                "ru",
+                "--model",
+                "test-model-xyz",
+                "--api-key",
+                "test-key",
                 "--debug",
             ],
         )
@@ -434,9 +446,12 @@ def test_debug_does_not_leak_api_key(runner, sample_txt):
             app,
             [
                 str(sample_txt),
-                "--source-lang", "en",
-                "--target-lang", "ru",
-                "--api-key", "super-secret-api-key-99999",
+                "--source-lang",
+                "en",
+                "--target-lang",
+                "ru",
+                "--api-key",
+                "super-secret-api-key-99999",
                 "--debug",
             ],
         )
@@ -513,10 +528,14 @@ def test_debug_base_url_shown_when_set(runner, sample_txt):
             app,
             [
                 str(sample_txt),
-                "--source-lang", "en",
-                "--target-lang", "ru",
-                "--api-key", "test-key",
-                "--base-url", "https://openrouter.ai/api/v1",
+                "--source-lang",
+                "en",
+                "--target-lang",
+                "ru",
+                "--api-key",
+                "test-key",
+                "--base-url",
+                "https://openrouter.ai/api/v1",
                 "--debug",
             ],
         )
@@ -585,8 +604,17 @@ def test_sentence_granularity_with_batch_token_budget(runner, sample_txt):
     result = runner.invoke(
         app,
         [
-            str(sample_txt), "--source-lang", "en", "--target-lang", "ru",
-            "--granularity", "sentence", "--batch-token-budget", "2000", "--api-key", "test-key",
+            str(sample_txt),
+            "--source-lang",
+            "en",
+            "--target-lang",
+            "ru",
+            "--granularity",
+            "sentence",
+            "--batch-token-budget",
+            "2000",
+            "--api-key",
+            "test-key",
         ],
     )
     assert "--batch-token-budget" not in result.output or "only valid for" not in result.output
@@ -729,8 +757,17 @@ def test_mode_interactive_with_sentence_granularity_accepted(runner, sample_txt)
         result = runner.invoke(
             app,
             [
-                str(sample_txt), "--source-lang", "en", "--target-lang", "ru",
-                "--mode", "interactive", "--granularity", "sentence", "--api-key", "test-key",
+                str(sample_txt),
+                "--source-lang",
+                "en",
+                "--target-lang",
+                "ru",
+                "--mode",
+                "interactive",
+                "--granularity",
+                "sentence",
+                "--api-key",
+                "test-key",
             ],
         )
     assert result.exit_code == 0, result.output

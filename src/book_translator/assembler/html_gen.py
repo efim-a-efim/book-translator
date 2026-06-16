@@ -78,7 +78,7 @@ def build_pair_html(para: Paragraph) -> str:
     For pass-through kinds (image, table) the original raw_html is returned
     unchanged.  For all others a ``<div class="bt-pair">`` wrapping two divs
     (original + translation) is produced.
-    
+
     For per-sentence mode (sentence_translations present), renders each sentence
     pair separately.
     """
@@ -103,8 +103,8 @@ def build_pair_html(para: Paragraph) -> str:
             # Target-first ordering: translation (bt-trans) before source (bt-orig).
             pairs.append(f'<p class="bt-trans">{_html.escape(para.sentence_translations[i])}</p>')
             pairs.append(f'<p class="bt-orig">{_html.escape(source_texts[i])}</p>')
-        return f'<div class="bt-pair">\n' + '\n'.join(pairs) + f'\n</div>'
-    
+        return '<div class="bt-pair">\n' + "\n".join(pairs) + "\n</div>"
+
     trans_text = _html.escape(para.translation or "")
 
     # Build translation element matching the tag of the original
@@ -149,11 +149,7 @@ def build_interactive_html(
             # now lives in the secondary span. NOTE: the span carries SOURCE text
             # now, but safe_lang still reflects target_lang (only lang available
             # in this signature) — the secondary span lang is cosmetic.
-            span = (
-                f'<span class="bt-heading-translation"'
-                f' xml:lang="{safe_lang}" lang="{safe_lang}">'
-                f"{escaped_text}</span>"
-            )
+            span = f'<span class="bt-heading-translation" xml:lang="{safe_lang}" lang="{safe_lang}">{escaped_text}</span>'
             return f"<h2>{trans}{span}</h2>"
         return f"<h2>{escaped_text}</h2>"
 
@@ -182,10 +178,10 @@ def build_interactive_html(
         return "".join(blocks)
 
     # paragraph / caption / footnote  (INTR-06, INTR-08)
-    prefixed_orig = _prefix_ids(para.raw_html)       # INTR-18: BS4 before <details>
+    prefixed_orig = _prefix_ids(para.raw_html)  # INTR-18: BS4 before <details>
     trans = _html.escape(para.translation or "")
     safe_lang = _html.escape(target_lang)
-    open_attr = ' open="open"' if is_first else ""   # INTR-07: XML attribute form
+    open_attr = ' open="open"' if is_first else ""  # INTR-07: XML attribute form
     # Target-first / target-default-visible: the always-visible <summary> now
     # carries the TARGET translation, the collapsible <p> carries the SOURCE.
     # The class names (bt-original / bt-translation) are STRUCTURAL CSS hooks
@@ -206,8 +202,9 @@ def build_interactive_html(
 def _split_sentences_for_rendering(text: str) -> list[str]:
     """Split text into sentences for per-sentence rendering."""
     import re
+
     # Simple sentence splitter for rendering (not Punkt)
-    sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+    sentences = re.split(r"(?<=[.!?])\s+", text.strip())
     return [s.strip() for s in sentences if s.strip()]
 
 

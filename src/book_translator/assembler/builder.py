@@ -14,7 +14,6 @@ from book_translator.assembler.html_gen import (
 from book_translator.assembler.splitter import split_chapter_parts
 from book_translator.models.document import BookDocument, Chapter
 
-
 _INTERACTIVE_CSS = """\
 details.bt-interactive {
 }
@@ -67,11 +66,7 @@ def _find_title_translation(chapter: Chapter, target_lang: str) -> str:
     if not chapter.title:
         return ""
     match = next(
-        (
-            p
-            for p in chapter.paragraphs
-            if p.kind == "heading" and p.text == chapter.title and p.translation
-        ),
+        (p for p in chapter.paragraphs if p.kind == "heading" and p.text == chapter.title and p.translation),
         None,
     )
     if match:
@@ -108,11 +103,7 @@ class EpubBuilder:
 
         for chapter_num, chapter in enumerate(doc.chapters, 1):
             title_html = f"<h1>{_html.escape(chapter.title)}</h1>" if chapter.title else ""
-            pairs = [
-                build_pair_html(p)
-                for p in chapter.paragraphs
-                if not (p.kind == "heading" and p.text == chapter.title)
-            ]
+            pairs = [build_pair_html(p) for p in chapter.paragraphs if not (p.kind == "heading" and p.text == chapter.title)]
             parts = split_chapter_parts(pairs, title_html, chapter_num)
 
             chapter_items: list[epub.EpubHtml] = []
@@ -163,7 +154,7 @@ class EpubBuilder:
         book_id: str = "",
     ) -> epub.EpubBook:
         """Build monolingual EPUB with translated-only content.
-        
+
         No paragraph pairing or source text interleaving.
         """
         book = epub.EpubBook()

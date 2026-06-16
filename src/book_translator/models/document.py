@@ -13,7 +13,7 @@ class Paragraph(BaseModel):
     raw_html: str
     translation: str | None = None
     sentence_translations: list[str] | None = None  # For per-sentence mode: translations per sentence
-    sentence_chunk_texts: list[str] | None = None  # For per-sentence mode: original chunk texts (parallel to sentence_translations)
+    sentence_chunk_texts: list[str] | None = None  # Original chunk texts for per-sentence mode
     kind: Literal["paragraph", "heading", "caption", "footnote", "image", "table"] = "paragraph"
 
 

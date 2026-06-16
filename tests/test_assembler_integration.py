@@ -7,7 +7,7 @@ import ebooklib
 import pytest
 from ebooklib import epub
 
-from book_translator.assembler import assemble, assemble_monolingual
+from book_translator.assembler import assemble
 from book_translator.models.document import BookDocument, Chapter, Paragraph
 
 
@@ -163,5 +163,3 @@ def test_assemble_monolingual_epub(tmp_path):
     assert isinstance(result, Path)
     assert result.name == "test_book.ru.epub"
     assert zipfile.is_zipfile(result)
-
-

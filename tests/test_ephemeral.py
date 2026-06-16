@@ -139,8 +139,16 @@ def test_preserve_temp_retains_run_dir_on_success(runner, sample_txt, tmp_path, 
         result = runner.invoke(
             app,
             [
-                str(sample_txt), "--source-lang", "en", "--target-lang", "ru",
-                "--api-key", "k", "--output", str(out), "--preserve-temp",
+                str(sample_txt),
+                "--source-lang",
+                "en",
+                "--target-lang",
+                "ru",
+                "--api-key",
+                "k",
+                "--output",
+                str(out),
+                "--preserve-temp",
             ],
         )
 

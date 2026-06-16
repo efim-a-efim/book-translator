@@ -3,9 +3,9 @@
 from bs4 import BeautifulSoup
 
 from book_translator.assembler.html_gen import (
+    _XHTML_TEMPLATE,
     _inject_class,
     _prefix_ids,
-    _XHTML_TEMPLATE,
     build_interactive_html,
     build_pair_html,
     wrap_chapter_xhtml,
@@ -354,6 +354,7 @@ def test_builder_monolingual_no_pairing():
     assert len(book.spine) >= 2
     # Check content has no bt-pair (no pairing)
     from ebooklib import epub as _epub
+
     for item in book.items:
         if isinstance(item, _epub.EpubHtml) and item.content:
             content = item.content.decode("utf-8")
@@ -381,6 +382,7 @@ def test_builder_monolingual_preserves_headings():
     book = EpubBuilder().build_monolingual(doc, "ru")
     # Check content has heading
     from ebooklib import epub as _epub
+
     for item in book.items:
         if isinstance(item, _epub.EpubHtml) and item.content:
             content = item.content.decode("utf-8")
@@ -414,6 +416,7 @@ def test_monolingual_heading_with_translation_renders_h2():
     )
     book = EpubBuilder().build_monolingual(doc, "de")
     from ebooklib import epub as _epub
+
     full_content = ""
     for item in book.items:
         if isinstance(item, _epub.EpubHtml) and item.content:
@@ -451,6 +454,7 @@ def test_monolingual_body_para_with_translation_renders_p():
     )
     book = EpubBuilder().build_monolingual(doc, "de")
     from ebooklib import epub as _epub
+
     full_content = ""
     for item in book.items:
         if isinstance(item, _epub.EpubHtml) and item.content:
@@ -474,8 +478,7 @@ class TestDoctype:
 
     def test_doctype_is_html5(self):
         assert _XHTML_TEMPLATE.startswith("<!DOCTYPE html>"), (
-            f"Expected _XHTML_TEMPLATE to start with '<!DOCTYPE html>', "
-            f"got: {_XHTML_TEMPLATE[:80]!r}"
+            f"Expected _XHTML_TEMPLATE to start with '<!DOCTYPE html>', got: {_XHTML_TEMPLATE[:80]!r}"
         )
 
 

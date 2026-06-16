@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import pytest
 from ebooklib import epub
 
-from book_translator.assembler.builder import EpubBuilder, _INTERACTIVE_CSS, _make_css_item
+from book_translator.assembler.builder import _INTERACTIVE_CSS, EpubBuilder, _make_css_item
 from book_translator.models.document import BookDocument, Chapter, Paragraph
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -27,9 +25,7 @@ def _make_para(id: str, text: str, translation: str, kind: str = "paragraph") ->
 def _make_doc(with_heading: bool = False) -> BookDocument:
     paragraphs = []
     if with_heading:
-        paragraphs.append(
-            _make_para("p0", "Intro", "Введение", kind="heading")
-        )
+        paragraphs.append(_make_para("p0", "Intro", "Введение", kind="heading"))
     paragraphs.append(_make_para("p1", "First sentence.", "Первое предложение."))
     paragraphs.append(_make_para("p2", "Second sentence.", "Второе предложение."))
     chapter = Chapter(id="ch1", title="Intro", paragraphs=paragraphs)
@@ -102,10 +98,9 @@ class TestBuildInteractive:
     def _get_chapter_xhtml_items(self, book):
         """Return chapter .xhtml items (excluding nav.xhtml which has empty content)."""
         return [
-            i for i in book.get_items()
-            if hasattr(i, "file_name")
-            and i.file_name.endswith(".xhtml")
-            and i.file_name != "nav.xhtml"
+            i
+            for i in book.get_items()
+            if hasattr(i, "file_name") and i.file_name.endswith(".xhtml") and i.file_name != "nav.xhtml"
         ]
 
     def test_first_details_has_open_attr(self):
@@ -131,6 +126,7 @@ class TestBuildInteractive:
         xhtml_items = self._get_chapter_xhtml_items(book)
         content = xhtml_items[0].content.decode("utf-8")
         from bs4 import BeautifulSoup
+
         soup = BeautifulSoup(content, "lxml")
         h1 = soup.find("h1")
         assert h1 is not None
@@ -148,6 +144,7 @@ class TestBuildInteractive:
         xhtml_items = self._get_chapter_xhtml_items(book)
         content = xhtml_items[0].content.decode("utf-8")
         from bs4 import BeautifulSoup
+
         soup = BeautifulSoup(content, "lxml")
         h1 = soup.find("h1")
         assert h1 is not None

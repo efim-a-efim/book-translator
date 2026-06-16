@@ -87,12 +87,7 @@ def _report_debug_failures(dst_dir: Path, granularity: str = "page") -> None:
 
         result_doc = BookDocument.from_json(dst_jsons[0].read_text(encoding="utf-8"))
         if granularity == "sentence":
-            sentences = [
-                s
-                for ch in result_doc.chapters
-                for p in ch.paragraphs
-                for s in (p.sentence_translations or [])
-            ]
+            sentences = [s for ch in result_doc.chapters for p in ch.paragraphs for s in (p.sentence_translations or [])]
             unit = "sentence"
             fail_count = sum(1 for s in sentences if s == "[TRANSLATION FAILED]")
             total_translated = sum(1 for s in sentences if s is not None)
@@ -117,17 +112,23 @@ def main(
     source_lang: str = typer.Option(..., "--source-lang", "-s", help="Source language code (e.g. en)"),
     target_lang: str = typer.Option(..., "--target-lang", "-t", help="Target language code (e.g. ru)"),
     model: str = typer.Option("openai/gpt-5.4-mini", "--model", "-m", help="OpenAI model name"),
-    api_key: str | None = typer.Option(None, "--api-key", help="OpenAI API key (overrides BOOK_TRANSLATOR_API_KEY / OPENAI_API_KEY)"),  # noqa: E501
+    api_key: str | None = typer.Option(
+        None, "--api-key", help="OpenAI API key (overrides BOOK_TRANSLATOR_API_KEY / OPENAI_API_KEY)"
+    ),  # noqa: E501
     base_url: str | None = typer.Option(None, "--base-url", help="Custom OpenAI base URL", envvar="OPENAI_BASE_URL"),
     output: Path | None = typer.Option(None, "--output", "-o", help="Output EPUB path (default: cwd/<stem>.<target_lang>.epub)"),
     context_window: int = typer.Option(3, "--context-window", help="Translation context window size"),
     concurrency: int = typer.Option(8, "--concurrency", help="Concurrent translation requests"),
     max_retries: int = typer.Option(5, "--max-retries", help="Max retries per paragraph"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show step-level logs"),
-    debug: bool = typer.Option(False, "--debug", help="Enable debug mode: DEBUG logging + detailed diagnostics (implies --verbose)"),  # noqa: E501
+    debug: bool = typer.Option(
+        False, "--debug", help="Enable debug mode: DEBUG logging + detailed diagnostics (implies --verbose)"
+    ),  # noqa: E501
     granularity: str | None = typer.Option(None, "--granularity", help="Translation granularity: page (paragraph) or sentence"),
     mode: str | None = typer.Option(None, "--mode", help="Output format: parallel, interactive, or monolingual"),
-    batch_token_budget: int | None = typer.Option(None, "--batch-token-budget", help="Token budget per batch - only for sentence granularity"),  # noqa: E501
+    batch_token_budget: int | None = typer.Option(
+        None, "--batch-token-budget", help="Token budget per batch - only for sentence granularity"
+    ),  # noqa: E501
     preserve_temp: bool = typer.Option(False, "--preserve-temp", help="Keep the run directory after the run"),
 ) -> None:
     """Translate a book file into bilingual or monolingual output."""

@@ -93,5 +93,3 @@ def _assemble_monolingual_epub(doc: BookDocument, dst_dir: Path, book_name: str,
     os.replace(tmp_path, epub_path)
 
     return epub_path
-
-
