@@ -68,8 +68,13 @@ def _parse_file(input_path: Path) -> object:
     raise ParseError(f"Unsupported suffix: {suffix}")
 
 
-def _report_debug_failures(dst_dir: Path) -> None:
-    """In debug mode: count [TRANSLATION FAILED] placeholders and report to stdout."""
+def _report_debug_failures(dst_dir: Path, granularity: str = "page") -> None:
+    """In debug mode: count [TRANSLATION FAILED] placeholders and report to stdout.
+
+    In sentence granularity, translations live in per-sentence slots
+    (``sentence_translations``) rather than the paragraph-level ``translation``
+    field, so counting must branch on granularity (WR-01).
+    """
     dst_jsons = list(dst_dir.glob("*.json"))
     if len(dst_jsons) != 1:
         typer.echo(
@@ -81,16 +86,27 @@ def _report_debug_failures(dst_dir: Path) -> None:
         from book_translator.models.document import BookDocument
 
         result_doc = BookDocument.from_json(dst_jsons[0].read_text(encoding="utf-8"))
-        fail_count = sum(
-            1 for ch in result_doc.chapters for p in ch.paragraphs if p.translation == "[TRANSLATION FAILED]"
-        )
-        total_translated = sum(1 for ch in result_doc.chapters for p in ch.paragraphs if p.translation is not None)
+        if granularity == "sentence":
+            sentences = [
+                s
+                for ch in result_doc.chapters
+                for p in ch.paragraphs
+                for s in (p.sentence_translations or [])
+            ]
+            unit = "sentence"
+            fail_count = sum(1 for s in sentences if s == "[TRANSLATION FAILED]")
+            total_translated = sum(1 for s in sentences if s is not None)
+        else:
+            paragraphs = [p for ch in result_doc.chapters for p in ch.paragraphs]
+            unit = "paragraph"
+            fail_count = sum(1 for p in paragraphs if p.translation == "[TRANSLATION FAILED]")
+            total_translated = sum(1 for p in paragraphs if p.translation is not None)
         if fail_count > 0:
             typer.echo(
-                f"[DEBUG] Translation failures: {fail_count}/{total_translated} paragraph(s) have [TRANSLATION FAILED]",
+                f"[DEBUG] Translation failures: {fail_count}/{total_translated} {unit}(s) have [TRANSLATION FAILED]",
             )
         else:
-            typer.echo(f"[DEBUG] Translation OK: all {total_translated} paragraph(s) translated")
+            typer.echo(f"[DEBUG] Translation OK: all {total_translated} {unit}(s) translated")
     except Exception as exc:  # noqa: BLE001
         typer.echo(f"[DEBUG] Could not count translation failures: {exc}", err=True)
 
@@ -266,7 +282,7 @@ def main(
         if verbose:
             typer.echo("Translation complete.")
         if debug:
-            _report_debug_failures(dst_dir)
+            _report_debug_failures(dst_dir, effective_granularity)
 
         # Step 6d — Assemble output
         if verbose:
