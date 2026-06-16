@@ -129,6 +129,9 @@ def main(
     if not input_file.exists():
         typer.echo(f"Error: input file not found: {input_file}", err=True)
         raise typer.Exit(code=2)
+    if not input_file.is_file():
+        typer.echo(f"Error: not a regular file: {input_file}", err=True)
+        raise typer.Exit(code=2)
 
     # Step 2b — Granularity validation before run creation (MODE-01, MODE-03)
     effective_granularity = granularity if granularity is not None else "page"
