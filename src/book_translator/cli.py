@@ -209,9 +209,9 @@ def main(
         if verbose:
             typer.echo(f"Copied input to {src_copy}")
 
-        # Step 6b — Parse and write BookDocument JSON to job_dir/src/ (D-03)
-        doc = _parse_file(input_file)
-        json_path = src_dir / f"{input_file.stem}.json"
+        # Step 6b — Parse the copied file (self-contained run dir) and write JSON (D-03, WR-05)
+        doc = _parse_file(src_copy)
+        json_path = src_dir / f"{src_copy.stem}.json"
         json_path.write_text(doc.to_json(), encoding="utf-8")
         if verbose:
             para_count = sum(len(ch.paragraphs) for ch in doc.chapters)
