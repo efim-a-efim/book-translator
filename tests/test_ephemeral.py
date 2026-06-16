@@ -251,7 +251,8 @@ def test_run_directory_printed_under_verbose_debug_preserve(runner, sample_txt, 
 
 
 def test_help_has_no_commands_section(runner):
-    result = runner.invoke(app, ["--help"])
+    # Rich truncates long option names on narrow terminals (common in CI).
+    result = runner.invoke(app, ["--help"], env={"COLUMNS": "120"})
     assert result.exit_code == 0
     assert "Commands" not in result.output
     # INPUT argument present (Typer renders the argument metavar)
