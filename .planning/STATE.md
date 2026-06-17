@@ -4,8 +4,8 @@ milestone: v4
 milestone_name: CLI Tool Polishing
 current_phase: 13
 status: completed
-last_updated: "2026-06-15T19:25:09.997Z"
-last_activity: 2026-06-15
+last_updated: "2026-06-17T01:32:30.338Z"
+last_activity: 2026-06-17
 progress:
   total_phases: 1
   completed_phases: 1
@@ -33,7 +33,7 @@ See: `.planning/PROJECT.md` (updated 2026-06-15)
 Phase: 13 (single-command-ephemeral-cli) — EXECUTING
 Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-06-15
+Last activity: 2026-06-17 - Completed quick task 260616-vb3: prune 5 obsolete tests after subcommand removal
 
 ## Phase Progress
 
@@ -90,6 +90,7 @@ v4 Overall: 0/1 phases complete [░░░░░░░░░░░░░░░�
 | 260615-c0w | Split interactive/monolingual output off `--mode` into new `--output-mode` flag; `--mode` now granularity-only | 2026-06-15 | 256998a | [260615-c0w-split-interactive-books-generation-from-](./quick/260615-c0w-split-interactive-books-generation-from-/) |
 | 260615-dkx | Rename CLI options: `--mode per-page\|per-sentence` → `--granularity page\|sentence`; `--output-mode` → `--mode` (pure rename, logic unchanged) | 2026-06-15 | f8d7ee2 | [260615-dkx-rename-cli-options-mode-per-page-per-sen](./quick/260615-dkx-rename-cli-options-mode-per-page-per-sen/) |
 | 260615-eff | Fix github account name from `aefimov` to `efim-a-efim` (URLs in pyproject.toml + README.md) | 2026-06-15 | 27cbb2d | [260615-eff-fix-github-account-name-from-aefimov-to-](./quick/260615-eff-fix-github-account-name-from-aefimov-to-/) |
+| 260616-vb3 | Remove tests no longer needed — prune 5 obsolete tests after subcommand removal (210→205) | 2026-06-17 | 25b510c | [260616-vb3-check-the-tests-and-remove-the-tests-tha](./quick/260616-vb3-check-the-tests-and-remove-the-tests-tha/) |
 
 ## Operator Next Steps
 
