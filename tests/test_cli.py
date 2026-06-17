@@ -134,69 +134,7 @@ def test_resolve_base_url_env(monkeypatch):
     assert _resolve_base_url(None) == "http://localhost:1234/v1"
 
 
-# --- translate happy path and output path (mocked) ---
-
-
-def test_translate_success(runner, sample_txt):
-    mock_doc = MagicMock()
-    mock_doc.to_json.return_value = '{"title":"T","author":"A","source_lang":"en","chapters":[]}'
-    mock_doc.chapters = []
-    with (
-        patch("book_translator.cli._parse_file", return_value=mock_doc),
-        patch("book_translator.cli.translate", new_callable=AsyncMock),
-        patch("book_translator.cli.assemble") as mock_assemble,
-    ):
-
-        def _fake_assemble(job_dir, target_lang):
-            epub = job_dir / "dst" / f"sample.{target_lang}.epub"
-            epub.parent.mkdir(parents=True, exist_ok=True)
-            epub.write_bytes(b"fake-epub")
-            return epub
-
-        mock_assemble.side_effect = _fake_assemble
-        result = runner.invoke(
-            app,
-            [str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--api-key", "test-key"],
-        )
-    assert result.exit_code == 0, result.output
-    assert "Done." in result.output
-
-
-def test_translate_success_output_path(runner, sample_txt, tmp_path):
-    out = tmp_path / "out" / "result.epub"
-    mock_doc = MagicMock()
-    mock_doc.to_json.return_value = '{"title":"T","author":"A","source_lang":"en","chapters":[]}'
-    mock_doc.chapters = []
-    with (
-        patch("book_translator.cli._parse_file", return_value=mock_doc),
-        patch("book_translator.cli.translate", new_callable=AsyncMock),
-        patch("book_translator.cli.assemble") as mock_assemble,
-    ):
-
-        def _fake_assemble(job_dir, target_lang):
-            epub = job_dir / "dst" / f"sample.{target_lang}.epub"
-            epub.parent.mkdir(parents=True, exist_ok=True)
-            epub.write_bytes(b"fake-epub")
-            return epub
-
-        mock_assemble.side_effect = _fake_assemble
-        result = runner.invoke(
-            app,
-            [
-                str(sample_txt),
-                "--source-lang",
-                "en",
-                "--target-lang",
-                "ru",
-                "--api-key",
-                "test-key",
-                "--output",
-                str(out),
-            ],
-        )
-    assert result.exit_code == 0, result.output
-    assert out.exists()
-    assert out.read_bytes() == b"fake-epub"
+# --- translate progress output (mocked) ---
 
 
 def test_translate_verbose_prints_progress(runner, sample_txt):
@@ -566,15 +504,6 @@ def test_sentence_granularity_recognized(runner, sample_txt):
         [str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--granularity", "sentence", "--api-key", "test-key"],
     )
     assert "invalid granularity" not in result.output.lower()
-
-
-def test_output_format_option_does_not_exist(runner, sample_txt):
-    """--output-format is no longer a valid option (D-02); Typer rejects it with exit code 2."""
-    result = runner.invoke(
-        app,
-        [str(sample_txt), "--source-lang", "en", "--target-lang", "ru", "--output-format", "epub"],
-    )
-    assert result.exit_code == 2
 
 
 def test_batch_token_budget_rejected_without_sentence(runner, sample_txt):

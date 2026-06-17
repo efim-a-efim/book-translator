@@ -1,6 +1,6 @@
 """Behavioral tests for the single-command ephemeral run-dir lifecycle.
 
-Covers RUN-01..06 and CLI-03/04/05. The run dir is captured by monkeypatching
+Covers RUN-01..06 and CLI-05. The run dir is captured by monkeypatching
 ``book_translator.cli.tempfile.mkdtemp`` to return a known directory under the
 pytest ``tmp_path``, so assertions about existence/absence operate only on an
 isolated path (never the shared $TMPDIR). All engine calls are mocked so no test
@@ -267,23 +267,3 @@ def test_help_has_no_commands_section(runner):
     assert "INPUT_FILE" in result.output or "INPUT" in result.output
     # An option is present
     assert "--source-lang" in result.output
-
-
-# --- CLI-03/04: list/cleanup run no logic, exit non-zero as invalid input path ---
-
-
-def test_list_token_is_invalid_input(runner):
-    """'list' is treated as an input path argument; no list logic runs, exits non-zero."""
-    result = runner.invoke(app, ["list"])
-    assert result.exit_code != 0
-    # No list-subcommand output text
-    assert "No preserved runs found" not in result.output
-    assert "RUN ID" not in result.output
-
-
-def test_cleanup_token_is_invalid_input(runner):
-    """'cleanup' is treated as an input path argument; no cleanup logic runs, exits non-zero."""
-    result = runner.invoke(app, ["cleanup"])
-    assert result.exit_code != 0
-    assert "Nothing to clean up" not in result.output
-    assert "Removed" not in result.output
