@@ -32,3 +32,4 @@ tmp/
 sample.*.epub
 sample.*.txt
 sample.*.md
+graphify-out/
