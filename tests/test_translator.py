@@ -238,8 +238,9 @@ def test_create_client_forwards_base_url() -> None:
     assert str(client.base_url).rstrip("/") == custom_url.rstrip("/")
 
 
-def test_create_client_base_url_none_uses_sdk_default() -> None:
+def test_create_client_base_url_none_uses_sdk_default(monkeypatch) -> None:
     """base_url=None must pass through, not be substituted with a hardcoded URL."""
+    monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
     default_client = create_client(api_key="test-key", base_url=None)
     # SDK default base URL contains "api.openai.com"
     assert "api.openai.com" in str(default_client.base_url)

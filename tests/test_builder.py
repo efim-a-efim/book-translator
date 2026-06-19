@@ -165,11 +165,6 @@ class TestBuildInteractive:
 
 
 class TestInteractiveCSSConstantExists:
-    def test_constant_importable(self):
-        """_INTERACTIVE_CSS must exist as a module-level string."""
-        assert isinstance(_INTERACTIVE_CSS, str)
-        assert len(_INTERACTIVE_CSS) > 0
-
     def test_no_raw_arrow_chars(self):
         """Raw Unicode arrows must not appear — CSS hex escapes only (INTR-15)."""
         assert chr(0x25B6) not in _INTERACTIVE_CSS
@@ -202,11 +197,6 @@ def _get_css_item(book):
 
 class TestInteractiveCSSContent:
     # ---- Constant-level assertions ------------------------------------------
-
-    def test_interactive_css_constant_no_raw_arrow_chars(self):
-        """No raw Unicode arrow chars in constant — CSS hex escapes only (INTR-15)."""
-        assert chr(0x25B6) not in _INTERACTIVE_CSS
-        assert chr(0x25BC) not in _INTERACTIVE_CSS
 
     def test_interactive_css_constant_has_all_triangle_hiding_rules(self):
         """All three disclosure-triangle-hiding rules present (INTR-14, D-07)."""

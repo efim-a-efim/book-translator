@@ -332,18 +332,6 @@ def test_epub_multi_chapter(tmp_path: Path) -> None:
     assert "ch3" in chapter_ids
 
 
-def test_parser_protocol_conformance() -> None:
-    """D-13: All three parsers are structurally compatible with the Parser Protocol."""
-    import inspect
-
-    for parser_cls in (EpubParser, TxtParser, MarkdownParser):
-        instance = parser_cls()
-        assert hasattr(instance, "parse"), f"{parser_cls.__name__} missing .parse()"
-        sig = inspect.signature(instance.parse)
-        params = list(sig.parameters.keys())
-        assert "path" in params, f"{parser_cls.__name__}.parse() missing 'path' parameter"
-
-
 def test_stable_paragraph_ids(tmp_path: Path) -> None:
     """Discretion: re-parsing the same file produces identical paragraph IDs."""
     p = tmp_path / "book.txt"

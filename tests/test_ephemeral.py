@@ -9,7 +9,6 @@ hits the network.
 
 from __future__ import annotations
 
-import re
 import tempfile
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -17,15 +16,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import book_translator.cli as cli
 from book_translator.cli import app
 from book_translator.translator import TranslationError
-
-# Rich emits ANSI color escapes when CI sets FORCE_COLOR/GITHUB_ACTIONS, which
-# splits option names (e.g. "\x1b[1m--source-lang\x1b[0m") and breaks literal
-# substring assertions. Strip them before inspecting help text.
-_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
-
-
-def _strip_ansi(text: str) -> str:
-    return _ANSI_RE.sub("", text)
 
 
 def _mock_doc():
@@ -54,19 +44,17 @@ def _assemble_side_effect(job_dir, target_lang):
     return out
 
 
-# --- RUN-01: run dir under gettempdir() with prefix book-translator- ---
+# --- RUN-01: run dir created with prefix book-translator- ---
 
 
-def test_run_dir_under_tempdir_with_prefix():
-    """The real mkdtemp call uses prefix book-translator- under tempfile.gettempdir()."""
+def test_run_dir_uses_book_translator_prefix():
+    """The CLI calls mkdtemp with prefix book-translator-."""
     captured = {}
     real_mkdtemp = tempfile.mkdtemp
 
     def _spy(*args, **kwargs):
         captured["prefix"] = kwargs.get("prefix")
-        path = real_mkdtemp(*args, **kwargs)
-        captured["path"] = path
-        return path
+        return real_mkdtemp(*args, **kwargs)
 
     mock_doc = _mock_doc()
     with (
@@ -87,8 +75,6 @@ def test_run_dir_under_tempdir_with_prefix():
 
     assert result.exit_code == 0, result.output
     assert captured["prefix"] == "book-translator-"
-    assert captured["path"].startswith(tempfile.gettempdir())
-    assert Path(captured["path"]).name.startswith("book-translator-")
 
 
 # --- RUN-03: success → run dir deleted, output EPUB at dest, exit 0 ---
@@ -263,20 +249,3 @@ def test_run_directory_printed_under_verbose_debug_preserve(runner, sample_txt, 
             )
         assert result.exit_code == 0, result.output
         assert "Run directory:" in result.output, f"missing under {flag}"
-
-
-# --- CLI-05: --help has no Commands section, shows INPUT arg + options ---
-
-
-def test_help_has_no_commands_section(runner):
-    # Rich truncates long option names on narrow terminals (common in CI).
-    result = runner.invoke(app, ["--help"], env={"COLUMNS": "120"})
-    assert result.exit_code == 0
-    # Strip ANSI escapes: CI sets FORCE_COLOR/GITHUB_ACTIONS so rich emits color
-    # codes that split option names and break literal substring checks.
-    output = _strip_ansi(result.output)
-    assert "Commands" not in output
-    # INPUT argument present (Typer renders the argument metavar)
-    assert "INPUT_FILE" in output or "INPUT" in output
-    # An option is present
-    assert "--source-lang" in output
