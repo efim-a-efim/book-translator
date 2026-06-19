@@ -9,6 +9,7 @@ hits the network.
 
 from __future__ import annotations
 
+import re
 import tempfile
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -16,6 +17,15 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import book_translator.cli as cli
 from book_translator.cli import app
 from book_translator.translator import TranslationError
+
+# Rich emits ANSI color escapes when CI sets FORCE_COLOR/GITHUB_ACTIONS, which
+# splits option names (e.g. "\x1b[1m--source-lang\x1b[0m") and breaks literal
+# substring assertions. Strip them before inspecting help text.
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def _strip_ansi(text: str) -> str:
+    return _ANSI_RE.sub("", text)
 
 
 def _mock_doc():
@@ -262,8 +272,11 @@ def test_help_has_no_commands_section(runner):
     # Rich truncates long option names on narrow terminals (common in CI).
     result = runner.invoke(app, ["--help"], env={"COLUMNS": "120"})
     assert result.exit_code == 0
-    assert "Commands" not in result.output
+    # Strip ANSI escapes: CI sets FORCE_COLOR/GITHUB_ACTIONS so rich emits color
+    # codes that split option names and break literal substring checks.
+    output = _strip_ansi(result.output)
+    assert "Commands" not in output
     # INPUT argument present (Typer renders the argument metavar)
-    assert "INPUT_FILE" in result.output or "INPUT" in result.output
+    assert "INPUT_FILE" in output or "INPUT" in output
     # An option is present
-    assert "--source-lang" in result.output
+    assert "--source-lang" in output
